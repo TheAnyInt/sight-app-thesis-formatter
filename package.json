@@ -20,6 +20,7 @@
     "@nestjs/config": "^3.1.1",
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/swagger": "^7.4.2",
     "axios": "^1.13.2",
     "docxtemplater": "^3.47.0",
     "docxtemplater-image-module-free": "^1.1.1",
@@ -32,6 +33,7 @@
     "pizzip": "^3.1.6",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
+    "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.0"
   },
   "devDependencies": {

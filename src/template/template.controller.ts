@@ -8,6 +8,7 @@ import {
   Param,
   Query,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { TemplateService } from './template.service';
 import { CreateTemplateDto, UpdateTemplateDto } from './dto/create-template.dto';
 
@@ -18,6 +19,28 @@ export class TemplateController {
   // ========== Public Endpoints ==========
 
   @Get('templates')
+  @ApiTags('templates')
+  @ApiOperation({ summary: 'List available templates', description: 'Get all templates or filter by school' })
+  @ApiQuery({ name: 'school', required: false, description: 'Filter by school ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of templates',
+    schema: {
+      properties: {
+        templates: {
+          type: 'array',
+          items: {
+            properties: {
+              id: { type: 'string', example: 'njulife-2' },
+              name: { type: 'string', example: '南京大学生命科学学院硕士学位论文 v2' },
+              description: { type: 'string' },
+              requiredFields: { type: 'array', items: { type: 'string' } },
+            },
+          },
+        },
+      },
+    },
+  })
   findTemplates(@Query('school') schoolId?: string) {
     if (schoolId) {
       return {
@@ -52,6 +75,8 @@ export class TemplateController {
   // ========== Admin Endpoints ==========
 
   @Get('admin/templates')
+  @ApiTags('admin')
+  @ApiOperation({ summary: 'List all templates (admin)', description: 'Get full template details including LaTeX source' })
   findAllAdmin() {
     return { templates: this.templateService.findAll() };
   }

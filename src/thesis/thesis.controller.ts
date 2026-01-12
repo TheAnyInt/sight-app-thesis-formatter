@@ -15,6 +15,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiConsumes,
+  ApiBody,
+  ApiBearerAuth,
+  ApiParam,
+} from '@nestjs/swagger';
 import { Response, Request } from 'express';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -23,6 +32,8 @@ import { JobService } from '../job/job.service';
 import { JobStatus } from '../job/entities/job.entity';
 import { CasdoorGuard } from '../auth/casdoor.guard';
 
+@ApiTags('thesis')
+@ApiBearerAuth()
 @Controller('thesis')
 @UseGuards(CasdoorGuard)
 export class ThesisController {
@@ -49,6 +60,31 @@ export class ThesisController {
    * Accepts: .docx, .txt, .md files
    */
   @Post('upload')
+  @ApiOperation({
+    summary: 'Upload and process thesis document',
+    description: 'Upload a document file and start async thesis formatting. Returns a jobId for tracking progress.',
+  })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: {
+          type: 'string',
+          format: 'binary',
+          description: 'Document file (.docx, .pdf, .txt, .md)',
+        },
+        templateId: {
+          type: 'string',
+          description: 'Template ID (e.g., njulife-2, njulife, thu)',
+          example: 'njulife-2',
+        },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiResponse({ status: 201, description: 'Job created successfully', schema: { properties: { jobId: { type: 'string' }, status: { type: 'string' } } } })
+  @ApiResponse({ status: 400, description: 'Invalid file type' })
   @UseInterceptors(
     FileInterceptor('file', {
       limits: {
@@ -224,6 +260,21 @@ export class ThesisController {
    * Poll job status
    */
   @Get('jobs/:jobId')
+  @ApiOperation({ summary: 'Get job status', description: 'Poll the status of a thesis processing job' })
+  @ApiParam({ name: 'jobId', description: 'Job ID returned from upload' })
+  @ApiResponse({
+    status: 200,
+    description: 'Job status',
+    schema: {
+      properties: {
+        jobId: { type: 'string' },
+        status: { type: 'string', enum: ['pending', 'processing', 'completed', 'failed'] },
+        progress: { type: 'number' },
+        result: { type: 'object' },
+        error: { type: 'string' },
+      },
+    },
+  })
   getJobStatus(@Param('jobId') jobId: string) {
     const job = this.jobService.getJob(jobId);
 
@@ -255,6 +306,10 @@ export class ThesisController {
    * Download generated PDF
    */
   @Get('jobs/:jobId/download')
+  @ApiOperation({ summary: 'Download generated PDF', description: 'Download the formatted thesis PDF after job completes' })
+  @ApiParam({ name: 'jobId', description: 'Job ID' })
+  @ApiResponse({ status: 200, description: 'PDF file download' })
+  @ApiResponse({ status: 404, description: 'Job not found or PDF not ready' })
   async downloadPdf(@Param('jobId') jobId: string, @Res() res: Response) {
     const job = this.jobService.getJob(jobId);
 
