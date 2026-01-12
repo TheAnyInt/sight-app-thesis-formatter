@@ -14,12 +14,21 @@ import { IS_PUBLIC_KEY } from './public.decorator';
 @Injectable()
 export class CasdoorGuard implements CanActivate {
   private readonly logger = new Logger(CasdoorGuard.name);
-  private jwksClient: JwksClient;
+  private jwksClient: JwksClient | null = null;
+  private readonly authEnabled: boolean;
 
   constructor(
     private reflector: Reflector,
     private configService: ConfigService,
   ) {
+    // Check if auth is enabled (default: true)
+    this.authEnabled = this.configService.get<string>('AUTH_ENABLED') !== 'false';
+
+    if (!this.authEnabled) {
+      this.logger.warn('⚠️  AUTH_ENABLED=false - JWT verification is DISABLED');
+      return;
+    }
+
     const jwksUri =
       this.configService.get<string>('CASDOOR_JWKS_JSON') ||
       'http://localhost:8000/.well-known/jwks';
@@ -35,6 +44,11 @@ export class CasdoorGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Skip auth if disabled
+    if (!this.authEnabled) {
+      return true;
+    }
+
     // Check if route is public
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
