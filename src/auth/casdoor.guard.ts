@@ -119,6 +119,10 @@ export class CasdoorGuard implements CanActivate {
 
   private getSigningKey(kid: string): Promise<any> {
     return new Promise((resolve, reject) => {
+      if (!this.jwksClient) {
+        reject(new UnauthorizedException('JWKS client not initialized'));
+        return;
+      }
       this.jwksClient.getSigningKey(kid, (err, key) => {
         if (err) {
           reject(new UnauthorizedException('Failed to get signing key'));
