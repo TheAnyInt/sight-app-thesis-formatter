@@ -187,6 +187,56 @@ curl -o thesis.pdf http://localhost:3000/thesis/jobs/JOB_ID/download \
 | `njulife-2` | 南京大学生命科学学院 | v2 (使用外部封面PDF) |
 | `thu` | 清华大学 | 本科学位论文模板 |
 
+## Template Font Requirements
+
+> **IMPORTANT**: When adding a new template, document the required fonts below and update the install script!
+
+### njulife / njulife-2
+
+| Font | Type | Usage |
+|------|------|-------|
+| Times New Roman | English serif | Main text |
+| Arial | English sans | Headers |
+| Courier New | English mono | Code |
+| Calibri | English | Cover page |
+| SimSun (宋体) | Chinese serif | Main text |
+| SimHei (黑体) | Chinese sans | Headers |
+| FangSong (仿宋) | Chinese | Quotes |
+
+### thu (ctexart default)
+
+| Font | Type | Usage |
+|------|------|-------|
+| Kaiti SC / AR PL UKai (楷体) | Chinese | Italic text |
+| SimSun / Songti (宋体) | Chinese serif | Main text |
+| SimHei / Heiti (黑体) | Chinese sans | Headers |
+
+### Install All Required Fonts (Remote Server)
+
+```bash
+# One-liner to install all fonts for all templates
+sudo DEBIAN_FRONTEND=noninteractive apt install -y \
+  ttf-mscorefonts-installer \
+  fonts-noto-cjk \
+  fonts-noto-cjk-extra \
+  fonts-arphic-ukai \
+  fonts-arphic-uming \
+  fonts-wqy-microhei \
+  fonts-wqy-zenhei \
+  && sudo fc-cache -fv
+
+# Verify installation
+fc-list | grep -iE "(times|simsun|simhei|kaiti|songti|heiti|fang)" | head -15
+```
+
+### Adding a New Template Checklist
+
+1. [ ] Add template files to `templates/<template-id>/`
+2. [ ] Register template in `src/template/template.service.ts`
+3. [ ] **Document required fonts** in this README section
+4. [ ] **Update install script** with any new font packages
+5. [ ] Test on remote server with fresh font cache
+
 ## Troubleshooting
 
 ### Font Issues
