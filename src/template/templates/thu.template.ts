@@ -29,12 +29,12 @@ export const thuTemplate = {
 % 字体设置
 \\usepackage{fontspec}
 \\setmainfont{Times New Roman}
-\\setCJKmainfont{Songti SC}
-\\setCJKsansfont{Heiti SC}
-\\setCJKmonofont{PingFang SC}
-\\newCJKfontfamily\\heiti{Heiti SC}
-\\newCJKfontfamily\\songti{Songti SC}
-\\newCJKfontfamily\\kaishu{STKaiti}
+\\setCJKmainfont{Noto Serif CJK SC}
+\\setCJKsansfont{Noto Sans CJK SC}
+\\setCJKmonofont{Noto Sans CJK SC}
+\\newCJKfontfamily\\heiti{Noto Sans CJK SC}
+\\newCJKfontfamily\\songti{Noto Serif CJK SC}
+\\newCJKfontfamily\\kaishu{AR PL UKai CN}
 
 % 其他包
 \\usepackage{titlesec}
