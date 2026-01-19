@@ -59,8 +59,8 @@ export const njulifeTemplate = {
 
 %% ==================== 字体设置 ====================
 \\setmainfont{Times New Roman}
-\\setsansfont{Arial}
-\\setmonofont{Courier New}
+\\setsansfont{DejaVu Sans}
+\\setmonofont{DejaVu Sans Mono}
 
 %% ==================== 字号命令 ====================
 \\newcommand{\\chuhao}{\\fontsize{42pt}{50.4pt}\\selectfont}
