@@ -3,6 +3,25 @@ import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { ThesisData, Section, ThesisMetadata } from '../thesis/dto/thesis-data.dto';
 import { GatewayProxyService } from '../gateway/gateway-proxy.service';
+import {
+  DocumentStructure,
+  buildStructureExtractionPrompt,
+  parseStructureResponse,
+  extractStructureWithRegex,
+} from './structure-extractor';
+import { ContentChunk, splitContentByStructure } from './content-splitter';
+import {
+  ChunkProcessingResult,
+  buildChunkPrompt,
+  parseChunkResponse,
+  delay,
+  RETRY_CONFIG,
+  calculateRetryDelay,
+} from './section-processor';
+import { ThesisDataWithWarnings, mergeThesisResults } from './thesis-merger';
+
+// Threshold for switching to multi-phase processing
+const LONG_CONTENT_THRESHOLD = 45000;
 
 @Injectable()
 export class LlmService {
@@ -48,59 +67,25 @@ export class LlmService {
    * @param userToken 用户 JWT token（Gateway 模式需要）
    */
   async parseThesisContent(content: string, userToken?: string): Promise<ThesisData> {
-    this.logger.log('Parsing thesis content with LLM...');
+    this.logger.log(`Parsing thesis content with LLM... (${content.length} characters)`);
 
+    // Route to appropriate processing method based on content length
+    if (content.length < LONG_CONTENT_THRESHOLD) {
+      return this.parseThesisContentSingleCall(content, userToken);
+    } else {
+      this.logger.log(`Content exceeds ${LONG_CONTENT_THRESHOLD} chars, using two-phase processing`);
+      return this.parseThesisContentMultiPhase(content, userToken);
+    }
+  }
+
+  /**
+   * Single-call processing for short documents (original implementation)
+   */
+  private async parseThesisContentSingleCall(content: string, userToken?: string): Promise<ThesisData> {
     const prompt = this.buildPrompt(content);
 
     try {
-      let resultText: string;
-
-      if (this.useGateway && this.gatewayProxy) {
-        if (!userToken) {
-          throw new Error('User token is required when using Gateway proxy');
-        }
-        // Use Gateway proxy
-        const response = await this.gatewayProxy.chatCompletions(userToken, {
-          model: this.model,
-          messages: [
-            {
-              role: 'system',
-              content:
-                '你是一个专业的文档解析助手，专门从学术论文中提取结构化信息。请始终返回有效的 JSON 格式，保留完整内容，按原文实际结构提取，不要预设章节名称。',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          temperature: 0.1,
-          max_tokens: 16000,
-          response_format: { type: 'json_object' },
-        });
-
-        resultText = response.choices?.[0]?.message?.content;
-      } else {
-        // Use OpenAI SDK directly
-        const response = await this.openai!.chat.completions.create({
-          model: this.model,
-          messages: [
-            {
-              role: 'system',
-              content:
-                '你是一个专业的文档解析助手，专门从学术论文中提取结构化信息。请始终返回有效的 JSON 格式，保留完整内容，按原文实际结构提取，不要预设章节名称。',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          temperature: 0.1,
-          max_tokens: 16000,
-          response_format: { type: 'json_object' },
-        });
-
-        resultText = response.choices[0]?.message?.content || '';
-      }
+      const resultText = await this.makeLlmCall(prompt, userToken);
 
       if (!resultText) {
         throw new Error('Empty response from LLM');
@@ -120,6 +105,171 @@ export class LlmService {
       throw new Error(
         `LLM parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
+    }
+  }
+
+  /**
+   * Two-phase processing for long documents
+   * Phase 1: Extract document structure
+   * Phase 2: Process sections in parallel
+   */
+  private async parseThesisContentMultiPhase(content: string, userToken?: string): Promise<ThesisDataWithWarnings> {
+    try {
+      // Phase 1: Extract document structure
+      this.logger.log('Phase 1: Extracting document structure...');
+      let structure: DocumentStructure;
+
+      try {
+        const structurePrompt = buildStructureExtractionPrompt(content);
+        const structureResponse = await this.makeLlmCall(structurePrompt, userToken, 4000);
+        structure = parseStructureResponse(structureResponse);
+        this.logger.log(`Structure extraction successful: ${structure.sections.length} sections identified`);
+      } catch (error) {
+        this.logger.warn('LLM structure extraction failed, falling back to regex', error);
+        structure = extractStructureWithRegex(content);
+      }
+
+      // Split content into chunks based on structure
+      const chunks = splitContentByStructure(content, structure);
+      this.logger.log(`Content split into ${chunks.length} chunks for processing`);
+
+      // Phase 2: Process chunks in parallel
+      this.logger.log('Phase 2: Processing chunks in parallel...');
+      const results = await this.processChunksInParallel(chunks, content, userToken);
+
+      // Merge results
+      this.logger.log('Merging chunk results...');
+      const mergedResult = mergeThesisResults(results);
+
+      this.logger.log(
+        `Multi-phase parsing complete: ${mergedResult.sections.length} sections extracted`,
+      );
+
+      if (mergedResult.warnings && mergedResult.warnings.length > 0) {
+        this.logger.warn(`Processing completed with ${mergedResult.warnings.length} warnings`);
+      }
+
+      return mergedResult;
+    } catch (error) {
+      this.logger.error('Failed to parse thesis content with multi-phase processing', error);
+      throw new Error(
+        `Multi-phase LLM parsing failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  /**
+   * Process chunks in parallel with retry logic
+   */
+  private async processChunksInParallel(
+    chunks: ContentChunk[],
+    originalContent: string,
+    userToken?: string,
+  ): Promise<ChunkProcessingResult[]> {
+    // Check for figure markers in original content
+    const hasFigureMarkers = /\[FIGURE:(docximg|pdfimg)\d+\]/.test(originalContent);
+    const figureIds = hasFigureMarkers
+      ? [...originalContent.matchAll(/\[FIGURE:((docximg|pdfimg)\d+)\]/g)].map((m) => m[1])
+      : [];
+    const figureIdList = [...new Set(figureIds)].join(', ');
+
+    // Process all chunks in parallel
+    const promises = chunks.map((chunk) =>
+      this.processChunkWithRetry(chunk, hasFigureMarkers, figureIdList, userToken),
+    );
+
+    return Promise.all(promises);
+  }
+
+  /**
+   * Process a single chunk with retry logic
+   */
+  private async processChunkWithRetry(
+    chunk: ContentChunk,
+    hasFigureMarkers: boolean,
+    figureIdList: string,
+    userToken?: string,
+  ): Promise<ChunkProcessingResult> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delayMs = calculateRetryDelay(attempt - 1);
+          this.logger.log(`Chunk ${chunk.chunkIndex + 1}: Retry ${attempt}/${RETRY_CONFIG.maxRetries} after ${delayMs}ms`);
+          await delay(delayMs);
+        }
+
+        const prompt = buildChunkPrompt(chunk, hasFigureMarkers, figureIdList);
+        const response = await this.makeLlmCall(prompt, userToken);
+
+        if (!response) {
+          throw new Error('Empty response from LLM');
+        }
+
+        const data = parseChunkResponse(response, chunk.chunkIndex);
+
+        this.logger.log(`Chunk ${chunk.chunkIndex + 1}/${chunk.totalChunks} processed successfully`);
+
+        return {
+          success: true,
+          chunkIndex: chunk.chunkIndex,
+          data,
+          retryCount: attempt,
+        };
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Unknown error');
+        this.logger.warn(
+          `Chunk ${chunk.chunkIndex + 1} failed (attempt ${attempt + 1}/${RETRY_CONFIG.maxRetries + 1}): ${lastError.message}`,
+        );
+      }
+    }
+
+    // All retries exhausted - skip this chunk
+    this.logger.error(`Chunk ${chunk.chunkIndex + 1} failed after all retries, skipping`);
+    return {
+      success: false,
+      chunkIndex: chunk.chunkIndex,
+      error: lastError?.message || 'Unknown error',
+      retryCount: RETRY_CONFIG.maxRetries,
+    };
+  }
+
+  /**
+   * Make a single LLM API call
+   */
+  private async makeLlmCall(prompt: string, userToken?: string, maxTokens: number = 16000): Promise<string> {
+    const systemMessage = '你是一个专业的文档解析助手，专门从学术论文中提取结构化信息。请始终返回有效的 JSON 格式，保留完整内容，按原文实际结构提取，不要预设章节名称。';
+
+    if (this.useGateway && this.gatewayProxy) {
+      if (!userToken) {
+        throw new Error('User token is required when using Gateway proxy');
+      }
+      const response = await this.gatewayProxy.chatCompletions(userToken, {
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.1,
+        max_tokens: maxTokens,
+        response_format: { type: 'json_object' },
+      });
+
+      return response.choices?.[0]?.message?.content || '';
+    } else {
+      const response = await this.openai!.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.1,
+        max_tokens: maxTokens,
+        response_format: { type: 'json_object' },
+      });
+
+      return response.choices[0]?.message?.content || '';
     }
   }
 
