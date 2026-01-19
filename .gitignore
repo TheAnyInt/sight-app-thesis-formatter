@@ -31,7 +31,7 @@ output/
 
 # Temp files
 .~*
-temp*/
+/temp/
 *.tmp
 
 # Test files
