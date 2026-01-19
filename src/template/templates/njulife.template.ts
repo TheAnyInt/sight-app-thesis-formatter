@@ -21,6 +21,10 @@ export const njulifeTemplate = {
     'abstractEn',
     'chapters',
   ],
+  // Shared fonts from templates/shared/
+  assets: [
+    'simsun.ttc',
+  ],
   texContent: `% 南京大学生命科学学院硕士学位论文 LaTeX 模板
 % NJU Life Sciences Master Thesis Template
 % Auto-generated from template
@@ -61,6 +65,7 @@ export const njulifeTemplate = {
 \\setmainfont{Times New Roman}
 \\setsansfont{DejaVu Sans}
 \\setmonofont{DejaVu Sans Mono}
+\\setCJKmainfont{simsun.ttc}
 
 %% ==================== 字号命令 ====================
 \\newcommand{\\chuhao}{\\fontsize{42pt}{50.4pt}\\selectfont}

@@ -17,6 +17,11 @@ export const thuTemplate = {
     'abstract_en',
     'sections',
   ],
+  // Shared fonts from templates/shared/
+  assets: [
+    'simsun.ttc',
+    'simhei.ttf',
+  ],
   texContent: `% 清华大学本科学位论文 LaTeX 模板
 % Tsinghua University Undergraduate Thesis Template
 % Auto-generated from template
@@ -26,15 +31,15 @@ export const thuTemplate = {
 % 页面设置
 \\usepackage[top=3.8cm, bottom=3.2cm, left=3.2cm, right=3cm]{geometry}
 
-% 字体设置
+% 字体设置 - 使用本地字体文件
 \\usepackage{fontspec}
 \\setmainfont{Times New Roman}
-\\setCJKmainfont{Noto Serif CJK SC}
-\\setCJKsansfont{Noto Sans CJK SC}
-\\setCJKmonofont{Noto Sans CJK SC}
-\\newCJKfontfamily\\heiti{Noto Sans CJK SC}
-\\newCJKfontfamily\\songti{Noto Serif CJK SC}
-\\newCJKfontfamily\\kaishu{AR PL UKai CN}
+\\setCJKmainfont{simsun.ttc}
+\\setCJKsansfont{simhei.ttf}
+\\setCJKmonofont{simhei.ttf}
+\\newCJKfontfamily\\heiti{simhei.ttf}
+\\newCJKfontfamily\\songti{simsun.ttc}
+\\newCJKfontfamily\\kaishu{simsun.ttc}
 
 % 其他包
 \\usepackage{titlesec}

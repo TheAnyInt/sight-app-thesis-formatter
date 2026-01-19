@@ -195,17 +195,15 @@ export class LatexService {
   /**
    * Copy template assets to job directory
    * Note: cover.pdf is handled separately by modifyCoverPdf()
+   * Assets are searched in: 1) templates/<templateId>/ 2) templates/shared/
    */
   copyTemplateAssets(jobDir: string, templateId: string, assets?: string[]): void {
     if (!assets || assets.length === 0) return;
 
     // Template assets are stored in templates/<templateId>/ directory
     const templateAssetsDir = path.join(process.cwd(), 'templates', templateId);
-
-    if (!fs.existsSync(templateAssetsDir)) {
-      this.logger.warn(`Template assets directory not found: ${templateAssetsDir}`);
-      return;
-    }
+    // Shared assets directory for common files (fonts, etc.)
+    const sharedAssetsDir = path.join(process.cwd(), 'templates', 'shared');
 
     for (const asset of assets) {
       // Skip cover.pdf - it will be handled by modifyCoverPdf()
@@ -213,7 +211,12 @@ export class LatexService {
         continue;
       }
 
-      const srcPath = path.join(templateAssetsDir, asset);
+      // Try template-specific directory first, then shared directory
+      let srcPath = path.join(templateAssetsDir, asset);
+      if (!fs.existsSync(srcPath)) {
+        srcPath = path.join(sharedAssetsDir, asset);
+      }
+
       const destPath = path.join(jobDir, asset);
 
       if (fs.existsSync(srcPath)) {
@@ -225,7 +228,7 @@ export class LatexService {
         fs.copyFileSync(srcPath, destPath);
         this.logger.log(`Copied template asset: ${asset}`);
       } else {
-        this.logger.warn(`Template asset not found: ${srcPath}`);
+        this.logger.warn(`Template asset not found: ${asset}`);
       }
     }
   }

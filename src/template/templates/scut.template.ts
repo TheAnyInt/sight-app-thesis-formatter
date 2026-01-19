@@ -23,6 +23,8 @@ export const scutTemplate = {
     'SCUTthesis.cls',
     'SCUTthesis_bibliographystyle.bst',
     'TITLEPAGE/FIGs/SCUTemblem.png',
+    'simsun.ttc',
+    'simhei.ttf',
   ],
   texContent: `%%
 %% 华南理工大学博士/硕士学位论文 LaTeX 模板
