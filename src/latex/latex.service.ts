@@ -67,6 +67,16 @@ export class LatexService {
   prepareDocumentData(document: Record<string, any>): Record<string, any> {
     const prepared: Record<string, any> = {};
 
+    // Add currentDate as a fallback for templates that need a date
+    // njuthesis expects YYYY-MM-DD format (e.g., 2026-01-19)
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    prepared.currentDate = `${year}-${month}-${day}`;
+    prepared.currentDateCn = `${year}年${now.getMonth() + 1}月`;
+    prepared.currentDateEn = `${now.toLocaleString('en-US', { month: 'long' })} ${year}`;
+
     // Fields that may contain raw LaTeX code and should not be escaped
     const rawLatexFields = ['content', 'abstract', 'abstract_en', 'references', 'acknowledgements', 'appendix'];
 
@@ -126,9 +136,10 @@ export class LatexService {
       const texDir = path.dirname(texPath);
       const texFile = path.basename(texPath);
 
-      this.logger.log(`Compiling ${texFile} with tectonic...`);
+      const cmd = `tectonic -Z continue-on-errors --keep-logs --keep-intermediates "${texFile}"`;
+      this.logger.log(`Compiling ${texFile} with command: ${cmd}`);
 
-      const { stdout, stderr } = await execAsync(`tectonic "${texFile}"`, {
+      const { stdout, stderr } = await execAsync(cmd, {
         cwd: texDir,
         timeout: 120000, // 2 minute timeout
       });
@@ -147,7 +158,16 @@ export class LatexService {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Tectonic compilation failed: ${errorMessage}`);
+      this.logger.warn(`Tectonic reported errors: ${errorMessage}`);
+
+      // Check if PDF was generated despite errors (with -Z continue-on-errors)
+      const pdfPath = texPath.replace(/\.tex$/, '.pdf');
+      if (fs.existsSync(pdfPath)) {
+        this.logger.log(`PDF generated despite errors: ${pdfPath}`);
+        return { success: true, pdfPath };
+      }
+
+      this.logger.error(`Tectonic compilation failed and no PDF generated`);
       return { success: false, error: errorMessage };
     }
   }
@@ -197,6 +217,11 @@ export class LatexService {
       const destPath = path.join(jobDir, asset);
 
       if (fs.existsSync(srcPath)) {
+        // Create parent directories if asset path includes subdirectories
+        const destDir = path.dirname(destPath);
+        if (!fs.existsSync(destDir)) {
+          fs.mkdirSync(destDir, { recursive: true });
+        }
         fs.copyFileSync(srcPath, destPath);
         this.logger.log(`Copied template asset: ${asset}`);
       } else {

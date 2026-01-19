@@ -298,20 +298,22 @@ export class LlmService {
       ? `
 **图片处理说明：**
 文本中包含以下图片标记: ${figureIdList}
-每个 [FIGURE:pdfimgX] 标记表示该位置有一张图片。
-**重要：只处理上述列出的图片ID，不要创建其他图片引用！**
+每个 [FIGURE:xxxX] 标记（如 [FIGURE:docximg1]）表示该位置有一张图片。
+**重要：只处理上述列出的图片ID，不要创建其他图片引用！必须使用原始的图片ID！**
 
-请在对应章节的 content 中将这些标记转换为 LaTeX 格式：
+请在对应章节的 content 中将这些标记转换为 LaTeX 格式（保留原始图片ID）：
 
+例如 [FIGURE:docximg1] 应转换为：
 \\\\begin{figure}[H]
     \\\\centering
-    \\\\includegraphics[width=0.8\\\\textwidth]{pdfimgX.png}
+    \\\\includegraphics[width=0.8\\\\textwidth]{docximg1.png}
     \\\\caption{根据上下文推断的图片描述}
-    \\\\label{fig:pdfimgX}
+    \\\\label{fig:docximg1}
 \\\\end{figure}
 
 注意：
 - 只能使用以下图片ID: ${figureIdList}
+- 必须保留原始的图片ID（如 docximg1, pdfimg2 等），不要修改为其他名称
 - 不要创建任何不在上述列表中的图片引用
 - 根据图片前后的文本内容，为每张图片生成合适的中文标题作为 caption
 - 保持图片在原文中的相对位置
