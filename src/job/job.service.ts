@@ -1,74 +1,89 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, LessThan } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { Job, JobStatus, JobResult } from './entities/job.entity';
 
 @Injectable()
 export class JobService {
-  private jobs: Map<string, Job> = new Map();
+  constructor(
+    @InjectRepository(Job)
+    private jobRepository: Repository<Job>,
+  ) {}
 
-  createJob(templateId: string, document: Record<string, any>): Job {
-    const job: Job = {
+  async createJob(
+    templateId: string,
+    document: Record<string, any>,
+    userId: string,
+  ): Promise<Job> {
+    const job = this.jobRepository.create({
       id: uuidv4(),
+      userId,
       status: JobStatus.PENDING,
       progress: 0,
       templateId,
       document,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    this.jobs.set(job.id, job);
-    return job;
+    });
+    return this.jobRepository.save(job);
   }
 
-  getJob(jobId: string): Job | undefined {
-    return this.jobs.get(jobId);
-  }
-
-  updateJobStatus(jobId: string, status: JobStatus, progress?: number): void {
-    const job = this.jobs.get(jobId);
-    if (job) {
-      job.status = status;
-      if (progress !== undefined) {
-        job.progress = progress;
-      }
-      job.updatedAt = new Date();
+  async getJob(jobId: string, userId?: string): Promise<Job | null> {
+    const where: any = { id: jobId };
+    if (userId) {
+      where.userId = userId;
     }
+    return this.jobRepository.findOne({ where });
   }
 
-  updateJobProgress(jobId: string, progress: number): void {
-    const job = this.jobs.get(jobId);
-    if (job) {
-      job.progress = progress;
-      job.updatedAt = new Date();
-    }
+  async getJobsByUser(
+    userId: string,
+    page = 1,
+    limit = 10,
+  ): Promise<{ jobs: Job[]; total: number }> {
+    const [jobs, total] = await this.jobRepository.findAndCount({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
+    });
+    return { jobs, total };
   }
 
-  completeJob(jobId: string, result: JobResult): void {
-    const job = this.jobs.get(jobId);
-    if (job) {
-      job.status = JobStatus.COMPLETED;
-      job.progress = 100;
-      job.result = result;
-      job.updatedAt = new Date();
+  async updateJobStatus(
+    jobId: string,
+    status: JobStatus,
+    progress?: number,
+  ): Promise<void> {
+    const updateData: Partial<Job> = { status };
+    if (progress !== undefined) {
+      updateData.progress = progress;
     }
+    await this.jobRepository.update(jobId, updateData);
   }
 
-  failJob(jobId: string, error: string): void {
-    const job = this.jobs.get(jobId);
-    if (job) {
-      job.status = JobStatus.FAILED;
-      job.error = error;
-      job.updatedAt = new Date();
-    }
+  async updateJobProgress(jobId: string, progress: number): Promise<void> {
+    await this.jobRepository.update(jobId, { progress });
   }
 
-  // Cleanup old jobs (call periodically)
-  cleanupOldJobs(maxAgeMs: number = 24 * 60 * 60 * 1000): void {
-    const now = Date.now();
-    for (const [id, job] of this.jobs) {
-      if (now - job.createdAt.getTime() > maxAgeMs) {
-        this.jobs.delete(id);
-      }
-    }
+  async completeJob(jobId: string, result: JobResult): Promise<void> {
+    await this.jobRepository.update(jobId, {
+      status: JobStatus.COMPLETED,
+      progress: 100,
+      result,
+    });
+  }
+
+  async failJob(jobId: string, error: string): Promise<void> {
+    await this.jobRepository.update(jobId, {
+      status: JobStatus.FAILED,
+      error,
+    });
+  }
+
+  async cleanupOldJobs(maxAgeMs: number = 24 * 60 * 60 * 1000): Promise<void> {
+    const cutoffDate = new Date(Date.now() - maxAgeMs);
+    await this.jobRepository.delete({
+      createdAt: LessThan(cutoffDate),
+    });
   }
 }

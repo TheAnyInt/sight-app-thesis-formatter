@@ -52,6 +52,21 @@ export const thuTemplate = {
 \\usepackage[colorlinks=true,linkcolor=black,anchorcolor=black,citecolor=black,urlcolor=black,bookmarks=true,bookmarksnumbered=true]{hyperref}
 \\usepackage{bookmark}
 
+% 数学公式
+\\usepackage{amsmath,amssymb,amsthm}
+
+% 表格
+\\usepackage{booktabs}
+\\usepackage{longtable}
+\\usepackage{multirow}
+\\usepackage{array}
+
+% 图表标题
+\\usepackage{caption}
+
+% 颜色
+\\usepackage{xcolor}
+
 % 行距设置
 \\setstretch{1.5}
 

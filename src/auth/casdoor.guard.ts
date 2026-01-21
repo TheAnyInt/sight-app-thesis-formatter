@@ -44,8 +44,14 @@ export class CasdoorGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    // Skip auth if disabled
+    // Skip auth if disabled, but set a mock user
     if (!this.authEnabled) {
+      const request = context.switchToHttp().getRequest();
+      request.user = {
+        sub: 'dev-user',
+        name: 'Development User',
+        email: 'dev@localhost',
+      };
       return true;
     }
 

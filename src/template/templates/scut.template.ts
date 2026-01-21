@@ -52,6 +52,9 @@ export const scutTemplate = {
 \\usepackage{algorithmic}
 \\usepackage[colorlinks=true]{hyperref}
 \\usepackage{bookmark}
+\\usepackage{float}
+\\usepackage{caption}
+\\usepackage{amsthm}
 \\usepackage[UTF8,fontset=none]{ctex}  % fontset=none to avoid redefining \\songti etc.
 
 %% 超链接设置

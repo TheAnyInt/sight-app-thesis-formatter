@@ -7,6 +7,7 @@ import {
   UploadedFile,
   Body,
   Param,
+  Query,
   Res,
   Req,
   HttpStatus,
@@ -23,6 +24,7 @@ import {
   ApiBody,
   ApiBearerAuth,
   ApiParam,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { Response, Request } from 'express';
 import * as fs from 'fs';
@@ -55,6 +57,17 @@ export class ThesisController {
       return authHeader.substring(7);
     }
     return undefined;
+  }
+
+  /**
+   * Extract user ID from authenticated request
+   */
+  private extractUserId(req: Request): string {
+    const user = (req as any).user;
+    if (!user?.sub) {
+      throw new BadRequestException('User ID not found in request');
+    }
+    return user.sub;
   }
 
   /**
@@ -159,7 +172,8 @@ export class ThesisController {
     const ext = path.extname(file.originalname).toLowerCase();
     const format = ext === '.docx' ? 'docx' : ext === '.pdf' ? 'pdf' : ext === '.md' ? 'markdown' : 'txt';
 
-    // Extract user token for Gateway proxy
+    // Extract user ID and token
+    const userId = this.extractUserId(req);
     const userToken = this.extractUserToken(req);
 
     // Start async processing
@@ -167,6 +181,7 @@ export class ThesisController {
       file.buffer,
       format,
       templateId,
+      userId,
       userToken,
       resolvedModel,
     );
@@ -281,6 +296,7 @@ export class ThesisController {
   @Post('render')
   async renderFromExtraction(
     @Body() body: { extractionId: string; templateId: string; document?: Record<string, any> },
+    @Req() req: Request,
   ) {
     if (!body.extractionId) {
       throw new BadRequestException('extractionId is required');
@@ -289,9 +305,13 @@ export class ThesisController {
       throw new BadRequestException('templateId is required');
     }
 
+    // Extract user ID
+    const userId = this.extractUserId(req);
+
     const job = await this.thesisService.renderFromExtraction(
       body.extractionId,
       body.templateId,
+      userId,
       body.document,
     );
 
@@ -299,6 +319,88 @@ export class ThesisController {
       jobId: job.id,
       status: job.status,
       pollUrl: `/thesis/jobs/${job.id}`,
+    };
+  }
+
+  /**
+   * List all jobs for the authenticated user
+   */
+  @Get('jobs')
+  @ApiOperation({
+    summary: 'List user jobs',
+    description: 'Get all thesis processing jobs for the authenticated user with pagination',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (1-indexed)',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'count',
+    required: false,
+    type: Number,
+    description: 'Number of items per page (max 100)',
+    example: 10,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'List of jobs',
+    schema: {
+      properties: {
+        jobs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              jobId: { type: 'string' },
+              status: { type: 'string', enum: ['pending', 'processing', 'completed', 'failed'] },
+              progress: { type: 'number' },
+              templateId: { type: 'string' },
+              createdAt: { type: 'string', format: 'date-time' },
+              updatedAt: { type: 'string', format: 'date-time' },
+            },
+          },
+        },
+        total: { type: 'number', description: 'Total number of jobs' },
+        page: { type: 'number', description: 'Current page number' },
+        count: { type: 'number', description: 'Items per page' },
+        totalPages: { type: 'number', description: 'Total number of pages' },
+      },
+    },
+  })
+  async listUserJobs(
+    @Req() req: Request,
+    @Query('page') page: string = '1',
+    @Query('count') count: string = '10',
+  ) {
+    const userId = this.extractUserId(req);
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(count) || 10));
+
+    const { jobs, total } = await this.jobService.getJobsByUser(userId, pageNum, limit);
+
+    return {
+      jobs: jobs.map((job) => ({
+        jobId: job.id,
+        status: job.status,
+        progress: job.progress,
+        templateId: job.templateId,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt,
+        ...(job.status === JobStatus.COMPLETED && job.result
+          ? {
+              downloadUrl: `/thesis/jobs/${job.id}/download`,
+              texUrl: `/thesis/jobs/${job.id}/tex`,
+            }
+          : {}),
+        ...(job.status === JobStatus.FAILED ? { error: job.error } : {}),
+      })),
+      total,
+      page: pageNum,
+      count: limit,
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -321,8 +423,9 @@ export class ThesisController {
       },
     },
   })
-  getJobStatus(@Param('jobId') jobId: string) {
-    const job = this.jobService.getJob(jobId);
+  async getJobStatus(@Param('jobId') jobId: string, @Req() req: Request) {
+    const userId = this.extractUserId(req);
+    const job = await this.jobService.getJob(jobId, userId);
 
     if (!job) {
       throw new NotFoundException(`Job '${jobId}' not found`);
@@ -356,8 +459,9 @@ export class ThesisController {
   @ApiParam({ name: 'jobId', description: 'Job ID' })
   @ApiResponse({ status: 200, description: 'PDF file download' })
   @ApiResponse({ status: 404, description: 'Job not found or PDF not ready' })
-  async downloadPdf(@Param('jobId') jobId: string, @Res() res: Response) {
-    const job = this.jobService.getJob(jobId);
+  async downloadPdf(@Param('jobId') jobId: string, @Req() req: Request, @Res() res: Response) {
+    const userId = this.extractUserId(req);
+    const job = await this.jobService.getJob(jobId, userId);
 
     if (!job) {
       throw new NotFoundException(`Job '${jobId}' not found`);
@@ -385,8 +489,9 @@ export class ThesisController {
    * Download generated DOCX (converted from LaTeX via Pandoc)
    */
   @Get('jobs/:jobId/docx')
-  async downloadDocx(@Param('jobId') jobId: string, @Res() res: Response) {
-    const job = this.jobService.getJob(jobId);
+  async downloadDocx(@Param('jobId') jobId: string, @Req() req: Request, @Res() res: Response) {
+    const userId = this.extractUserId(req);
+    const job = await this.jobService.getJob(jobId, userId);
 
     if (!job) {
       throw new NotFoundException(`Job '${jobId}' not found`);
@@ -426,8 +531,9 @@ export class ThesisController {
    * Download generated TeX source
    */
   @Get('jobs/:jobId/tex')
-  async downloadTex(@Param('jobId') jobId: string, @Res() res: Response) {
-    const job = this.jobService.getJob(jobId);
+  async downloadTex(@Param('jobId') jobId: string, @Req() req: Request, @Res() res: Response) {
+    const userId = this.extractUserId(req);
+    const job = await this.jobService.getJob(jobId, userId);
 
     if (!job) {
       throw new NotFoundException(`Job '${jobId}' not found`);

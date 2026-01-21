@@ -52,6 +52,7 @@ export class ThesisService {
 
   /**
    * Start async thesis processing
+   * @param userId 用户 ID（从 JWT 提取）
    * @param userToken 用户 JWT token（Gateway 模式需要）
    * @param model 指定的 LLM 模型（可选）
    */
@@ -59,6 +60,7 @@ export class ThesisService {
     fileBuffer: Buffer,
     format: InputFormat,
     templateId: string,
+    userId: string,
     userToken?: string,
     model?: string,
   ): Promise<Job> {
@@ -87,7 +89,7 @@ export class ThesisService {
     const document = await this.parseContent(text, format, images, userToken, model);
 
     // Create job for async LaTeX rendering
-    const job = this.jobService.createJob(templateId, document);
+    const job = await this.jobService.createJob(templateId, document, userId);
 
     // Process in background with images
     this.processJobAsync(job.id, templateId, document, images);
@@ -150,11 +152,11 @@ export class ThesisService {
     images?: Map<string, ExtractedImage>,
   ): Promise<void> {
     try {
-      this.jobService.updateJobStatus(jobId, JobStatus.PROCESSING, 10);
+      await this.jobService.updateJobStatus(jobId, JobStatus.PROCESSING, 10);
 
       // Get template by schoolId (templateId is actually schoolId from user)
       const template = this.templateService.findOneBySchool(templateId);
-      this.jobService.updateJobProgress(jobId, 30);
+      await this.jobService.updateJobProgress(jobId, 30);
 
       // Render LaTeX and compile to PDF (with images if available)
       this.logger.log(`Rendering LaTeX template: ${templateId}`);
@@ -167,21 +169,21 @@ export class ThesisService {
         template.assets,
       );
 
-      this.jobService.updateJobProgress(jobId, 90);
+      await this.jobService.updateJobProgress(jobId, 90);
 
       if (result.success) {
-        this.jobService.completeJob(jobId, {
+        await this.jobService.completeJob(jobId, {
           pdfPath: result.pdfPath,
           texPath: result.texPath,
         });
         this.logger.log(`Job ${jobId} completed successfully`);
       } else {
-        this.jobService.failJob(jobId, result.error || 'Unknown error');
+        await this.jobService.failJob(jobId, result.error || 'Unknown error');
         this.logger.error(`Job ${jobId} failed: ${result.error}`);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.jobService.failJob(jobId, errorMessage);
+      await this.jobService.failJob(jobId, errorMessage);
       this.logger.error(`Job ${jobId} failed: ${errorMessage}`);
     }
   }
@@ -283,10 +285,12 @@ export class ThesisService {
 
   /**
    * Step 2: Render PDF from extraction or provided document
+   * @param userId 用户 ID（从 JWT 提取）
    */
   async renderFromExtraction(
     extractionId: string,
     templateId: string,
+    userId: string,
     documentOverride?: Record<string, any>,
   ): Promise<Job> {
     this.logger.log(`Step 2: Rendering from extraction ${extractionId}`);
@@ -297,7 +301,7 @@ export class ThesisService {
     const document = documentOverride || extraction.document;
 
     // Create job for async LaTeX rendering
-    const job = this.jobService.createJob(templateId, document);
+    const job = await this.jobService.createJob(templateId, document, userId);
 
     // Process in background with images
     this.processJobAsync(job.id, templateId, document, extraction.images);

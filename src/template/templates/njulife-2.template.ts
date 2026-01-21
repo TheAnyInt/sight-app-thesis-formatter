@@ -60,6 +60,9 @@ export const njulife2Template = {
 \\usepackage{indentfirst}
 \\newcommand{\\upcitep}[1]{\\textsuperscript{\\cite{#1}}}
 \\usepackage{caption}
+\\usepackage{float}
+\\usepackage{amsthm}
+\\usepackage{array}
 \\DeclareCaptionFormat{myformat}{\\heiti\\zihao{-4} #1#2#3}
 \\captionsetup{labelsep=space,format={myformat}}
 

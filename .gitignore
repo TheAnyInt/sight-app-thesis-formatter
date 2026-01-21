@@ -34,6 +34,10 @@ output/
 /temp/
 *.tmp
 
+# Database files
+data/*.sqlite
+data/*.sqlite-journal
+
 # Test files
 example.docx
 render-request.json
