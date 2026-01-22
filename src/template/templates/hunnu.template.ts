@@ -35,11 +35,8 @@ export const hunnuTemplate = {
 %%
 \\documentclass[a4paper,twoside,openright,zihao=-4]{ctexbook}
 
-%% ==================== 字体设置 (必须在最前面) ====================
-\\usepackage{fontspec}
-\\usepackage{xeCJK}
-
-% 设置中文字体 - 使用本地字体文件
+%% ==================== 字体设置 ====================
+% 设置中文字体 - 使用本地字体文件 (ctexbook 已内置 xeCJK)
 \\setCJKmainfont{simsun.ttc}[AutoFakeBold=2.5, AutoFakeSlant=0.2]
 \\setCJKsansfont{simhei.ttf}[AutoFakeBold=2.5]
 \\setCJKmonofont{simhei.ttf}
@@ -56,13 +53,9 @@ export const hunnuTemplate = {
 \\newcommand{\\kaiti}{\\CJKfamily{zhkai}}
 
 % 英文字体
-\\setmainfont{Times New Roman}[
-  BoldFont=Times New Roman,
-  ItalicFont=Times New Roman,
-  BoldItalicFont=Times New Roman,
-  AutoFakeBold=2.5,
-  AutoFakeSlant=0.2
-]
+\\setmainfont{Times New Roman}[AutoFakeBold=2.5, AutoFakeSlant=0.2]
+\\setsansfont{DejaVu Sans}
+\\setmonofont{DejaVu Sans Mono}
 
 %% ==================== 页面设置 ====================
 \\usepackage[top=2.54cm, bottom=2.54cm, outer=2.54cm, inner=2.27cm, headheight=1.5cm, footskip=1.75cm, heightrounded]{geometry}
@@ -76,7 +69,6 @@ export const hunnuTemplate = {
 \\usepackage{subfigure}
 \\usepackage{setspace}
 \\usepackage{float}
-\\usepackage[T1]{fontenc}
 \\usepackage{booktabs}
 \\usepackage{longtable}
 \\usepackage{listings}
