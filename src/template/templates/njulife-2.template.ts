@@ -39,9 +39,8 @@ export const njulife2Template = {
 \\setlength{\\headheight}{0.8cm}
 \\usepackage{setspace}
 \\linespread{1.5}
-\\newfontfamily{\\myCalibri}{calibri.ttf}
-
 \\usepackage{fontspec}
+\\newfontfamily{\\myCalibri}{calibri.ttf}
 \\usepackage{amsmath, amsfonts, amssymb, mathrsfs}
 \\usepackage{color}
 \\usepackage{graphicx}
