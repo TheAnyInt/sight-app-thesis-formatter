@@ -7,6 +7,7 @@ import { njulife2Template } from './templates/njulife-2.template';
 import { thuTemplate } from './templates/thu.template';
 import { njuthesisTemplate } from './templates/njuthesis.template';
 import { scutTemplate } from './templates/scut.template';
+import { hunnuTemplate } from './templates/hunnu.template';
 
 @Injectable()
 export class TemplateService implements OnModuleInit {
@@ -62,6 +63,15 @@ export class TemplateService implements OnModuleInit {
     };
     this.templates.set(scut.id, scut);
     this.logger.log(`Loaded built-in template: ${scut.name} (${scut.id})`);
+
+    // Load HUNNU bachelor thesis template
+    const hunnu: LatexTemplate = {
+      ...hunnuTemplate,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.templates.set(hunnu.id, hunnu);
+    this.logger.log(`Loaded built-in template: ${hunnu.name} (${hunnu.id})`);
   }
 
   create(dto: CreateTemplateDto): LatexTemplate {
