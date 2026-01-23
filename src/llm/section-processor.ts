@@ -139,8 +139,15 @@ ${contextInfo}
 - 常见转换：𝛼→\\alpha, 𝛽→\\beta, ∑→\\sum, ∏→\\prod, ∫→\\int, √→\\sqrt, ≤→\\leq, ≥→\\geq, 𝑥ᵢ→x_i, 𝑥²→x^2
 
 **表格处理（极重要）：**
-- PDF提取的表格可能每个单元格变成单独的一行
-- 识别模式：连续的短行（如 "数据集\\n类别数\\n训练集\\nCIFAR-10\\n10\\n50,000"）
+- PDF提取的表格可能用 [TABLE_START]...[TABLE_END] 标记，每个单元格用 [TABLE_CELL: xxx] 表示
+- 例如：
+  [TABLE_START]
+  [TABLE_CELL: 数据集]
+  [TABLE_CELL: 类别数]
+  [TABLE_CELL: CIFAR-10]
+  [TABLE_CELL: 10]
+  [TABLE_END]
+- 需要根据表头数量确定列数，然后将单元格重组为表格行
 - **Markdown表格必须转换**：如果看到 | col1 | col2 | 这样的管道符分隔格式，必须转换为LaTeX
 - **必须将所有表格转换为LaTeX tabular格式**：
 \\begin{table}[H]
@@ -155,7 +162,8 @@ ${contextInfo}
 \\end{tabular}
 \\end{table}
 - **禁止输出 Markdown 格式的表格**（如 | A | B | 或 |---|---| 分隔线），必须用 LaTeX tabular
-- 首先识别有多少列（根据重复模式），然后将数据组织成表格
+- 根据内容推断列数：如果表头是"数据集、类别数、训练集、测试集"则为4列
+- **重要**：如果无法正确转换表格，请保留原始的 [TABLE_START]...[TABLE_END] 和 [TABLE_CELL:] 标记，不要删除它们
 ${figureInstructions}
 内容片段：
 ${contentToProcess}`;
@@ -274,11 +282,103 @@ export function convertMarkdownTablesToLatex(content: string): string {
 }
 
 /**
+ * Convert [TABLE_CELL:] format from PDF extraction to LaTeX
+ */
+export function convertTableCellsToLatex(content: string): string {
+  // Match [TABLE_START]...[TABLE_END] blocks
+  const tableBlockRegex = /\[TABLE_START\]\n([\s\S]*?)\[TABLE_END\]/g;
+
+  return content.replace(tableBlockRegex, (match, cellsContent) => {
+    try {
+      // Extract all cells
+      const cellRegex = /\[TABLE_CELL:\s*([^\]]+)\]/g;
+      const cells: string[] = [];
+      let cellMatch;
+      while ((cellMatch = cellRegex.exec(cellsContent)) !== null) {
+        cells.push(cellMatch[1].trim());
+      }
+
+      if (cells.length < 4) return match; // Not enough cells for a table
+
+      // Try to determine number of columns by analyzing content
+      // Heuristic: headers are usually short Chinese text, data rows start with alphanumeric identifiers
+      let numCols = 4; // Default assumption
+
+      // Count consecutive Chinese-only text cells at the start (likely headers)
+      let headerCount = 0;
+      for (const cell of cells) {
+        // Check if cell is Chinese text (header candidate)
+        if (/^[\u4e00-\u9fa5]+$/.test(cell)) {
+          headerCount++;
+          if (headerCount > 6) break;
+        } else {
+          // Found non-Chinese cell (data row starts)
+          break;
+        }
+      }
+
+      // If we found 2-6 Chinese headers, use that as column count
+      if (headerCount >= 2 && headerCount <= 6) {
+        numCols = headerCount;
+      } else {
+        // Fallback: try to detect repeating patterns
+        // Look for the first numeric value and count cells before next occurrence of similar pattern
+        const numericPattern = /^[\d,.\-+%]+$/;
+        for (let i = 0; i < Math.min(10, cells.length); i++) {
+          if (numericPattern.test(cells[i])) {
+            // Found first number, look for next occurrence of number after non-numbers
+            for (let j = i + 1; j < Math.min(i + 8, cells.length); j++) {
+              if (numericPattern.test(cells[j]) && j - i >= 2 && j - i <= 6) {
+                numCols = j - i + 1; // Include the number in the count
+                break;
+              }
+            }
+            break;
+          }
+        }
+      }
+
+      // Group cells into rows
+      const rows: string[][] = [];
+      for (let i = 0; i < cells.length; i += numCols) {
+        const row = cells.slice(i, i + numCols);
+        if (row.length === numCols) {
+          rows.push(row);
+        }
+      }
+
+      if (rows.length < 2) return match; // Need at least header + 1 data row
+
+      // Build LaTeX table
+      const colSpec = '|' + 'c|'.repeat(numCols);
+      let latex = '\\begin{table}[H]\n\\centering\n';
+      latex += `\\begin{tabular}{${colSpec}}\n\\hline\n`;
+
+      // Header row
+      latex += rows[0].join(' & ') + ' \\\\\\\\ \\hline\n';
+
+      // Data rows
+      for (let i = 1; i < rows.length; i++) {
+        latex += rows[i].join(' & ') + ' \\\\\\\\ \\hline\n';
+      }
+
+      latex += '\\end{tabular}\n\\end{table}';
+      return latex;
+    } catch (e) {
+      logger.warn(`Failed to convert TABLE_CELL format: ${e}`);
+      return match;
+    }
+  });
+}
+
+/**
  * Post-process section content to fix common issues
  */
 export function postProcessSectionContent(content: string): string {
+  // Convert [TABLE_CELL:] format from PDF extraction
+  let result = convertTableCellsToLatex(content);
   // Convert any remaining markdown tables to LaTeX
-  let result = convertMarkdownTablesToLatex(content);
+  result = convertMarkdownTablesToLatex(result);
   return result;
 }
 

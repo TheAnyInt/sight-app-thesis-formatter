@@ -366,6 +366,22 @@ export class LlmService {
 4. 不要将内容强制映射到预定义的字段名
 5. 如果某个字段在原文中不存在，返回空字符串 ""
 6. 保持学术语言的严谨性
+
+**表格处理（极重要）：**
+- 如果内容中有 [TABLE_START]...[TABLE_END] 标记，其中每个单元格用 [TABLE_CELL: xxx] 表示
+- 请将这些转换为 LaTeX tabular 格式：
+\\begin{table}[H]
+\\centering
+\\begin{tabular}{|c|c|c|c|}
+\\hline
+表头1 & 表头2 & 表头3 & 表头4 \\\\
+\\hline
+数据1 & 数据2 & 数据3 & 数据4 \\\\
+\\hline
+\\end{tabular}
+\\end{table}
+- 根据内容推断列数（通常中文文字是表头，数字是数据）
+- **重要**：如果无法正确转换，请保留原始的 [TABLE_START]...[TABLE_END] 和 [TABLE_CELL:] 标记不要删除
 ${figureInstructions}
 论文内容：
 ${truncatedContent}`;
