@@ -1,0 +1,311 @@
+%%
+%% Completed: 2022/01/14
+%% Copyright: Andy GAO (华工自动化)
+%%
+%%==========================================================
+%%          华南理工大学博士学位论文——扉页
+%%      Author: Andy GAO        Date: 2022.01.
+%%==========================================================
+%%
+\clearpage
+\pagestyle{empty}
+
+
+%%==========================================================
+%% 封面
+%%==========================================================
+\begin{center}
+%
+\noindent
+
+\vspace{2.5cm}
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Figure
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=12.1cm,height=2.76cm]{TITLEPAGE/FIGs/SCUTemblem} % 校徽
+  %\caption{}
+  %\label{fig:}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Figure
+%
+
+\vspace{0.5em}
+{\heiti\chuhao
+\makebox[9.1cm][s]{\thesissubject}
+}\\
+
+    \noindent\rule{\textwidth}{0.4pt}
+
+    \vspace{1.5cm}
+
+    % 论文题目
+    {\heiti\erhao
+       \uline{\hfill{LaTeX模板介绍与案例说明}\hfill}
+    }
+
+    \vspace{3cm}
+\end{center}
+
+
+\ifSingleBlindReview
+%%----------------------------------------------------------
+%% 单盲评审/终版提交封面
+%%----------------------------------------------------------
+
+\begin{minipage}[!h]{0.75\linewidth}
+\centering
+\heiti\sanhao
+\makebox[4cm][s]{作者姓名}~~\uline{\hfill{高{\quad}勇}\hfill}\hfill\\
+\makebox[4cm][s]{学科专业}~~\uline{\hfill{控制科学与工程}\hfill}\hfill\\
+\makebox[4cm][s]{指导教师}~~\uline{\hfill{魏~武{\quad}教~授}\hfill}\hfill\\
+\makebox[4cm][s]{所在学院}~~\uline{\hfill{自动化科学与工程学院}\hfill}\hfill\\
+\makebox[4cm][s]{论文提交日期}~~\uline{\hfill{\thesissubmitdate}\hfill}\hfill\\
+\end{minipage}
+
+
+
+\else
+%%----------------------------------------------------------
+%% 双盲评审封面
+%%----------------------------------------------------------
+
+\begin{minipage}[!h]{0.75\linewidth}
+\centering
+\heiti\sanhao
+\makebox[4cm][s]{学科专业}~~\uline{\hfill{控制科学与工程}\hfill}\\
+\makebox[4cm][s]{所在学院}~~\uline{\hfill{自动化科学与工程学院}\hfill}\\
+\makebox[4cm][s]{论文提交日期}~~\uline{\hfill{\thesissubmitdate}\hfill}\\
+\end{minipage}
+
+\vfill
+
+% 论文评审结果处理办法
+\newpage
+\null
+\noindent
+\centering
+
+\vspace{3cm}
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Figure
+\begin{figure}[!h]
+  \centering
+  \includegraphics[width=\linewidth]{TITLEPAGE/FIGs/PingShenChuLi} % 评审结果处理办法
+  %\caption{}
+  %\label{fig:}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Figure
+%
+
+
+\fi
+%
+\end{center}
+
+\vfill
+
+
+
+
+
+\ifSingleBlindReview
+%%----------------------------------------------------------
+%% 单盲评审/终版提交内封、题名页、授权书
+%%----------------------------------------------------------
+%%==========================================================
+%% 英文内封
+%%==========================================================
+\newpage
+\begin{center}
+%
+\noindent
+
+\vspace{4cm}
+
+%% 论文的英文标题
+\textbf{{\xiaoerhao
+Title Title Title Title Title Title Title Title Title Title Title Title Title Title Title Title
+}}
+
+\vspace{2cm}
+
+{\sihao
+A Dissertation Submitted for the Degree of Doctor of Philosophy
+}
+
+\vspace{3cm}
+
+\begin{minipage}[!h]{0.4\linewidth}
+\raggedright        % 左对齐
+\textbf{\xiaosanhao
+\makebox[2.8cm][s]{Candidate:}  Gao~Yong \hfill\\
+\makebox[2.8cm][s]{Supervisor:}  Prof. Wei~Wu \hfill\\
+}
+\end{minipage}
+
+\vspace{3.5cm}
+
+{\xiaosanhao
+South China University of Technology \par
+Guangzhou, China
+}
+
+%
+\end{center}
+
+\vfill
+
+
+
+
+
+%%==========================================================
+%% 题名页
+%%==========================================================
+\newpage
+\null
+
+\begin{flushleft}   % 左对齐
+%
+\noindent
+\textbf{{\heiti\sihao
+分类号：TP242 {\hfill}
+学校代号：10561
+{\\}
+学{\quad}号：20**********
+}}
+%
+\end{flushleft}
+
+\vspace{2.5cm}
+
+\begin{center}      % 居中对齐
+%
+{\heiti\xiaoerhao
+华南理工大学{\thesissubject}
+}
+
+\vspace{2cm}
+
+%% （论文题名和副题名）
+\textbf{{\heiti\xiaoyihao
+华南理工大学博/硕士学位论文
+{\\}{\vspace{0.5em}}
+LaTeX模板介绍与案例说明
+}}
+%
+\end{center}
+
+\vspace{3.5cm}
+
+\begin{minipage}[!h]{14cm}
+\raggedright        % 左对齐
+\songti\wuhao
+\makebox[7cm][s]{作者姓名：高{\quad}勇 {\hfill}}%
+\makebox[7cm][s]{指导教师姓名、职称：魏~武~~教授 {\hfill}} \\
+\makebox[7cm][s]{申请学位级别：工学博士 {\hfill}}%
+\makebox[7cm][s]{学科专业名称：控制科学与工程 {\hfill}} \\
+\makebox[14cm][s]{研究方向：仿生机器人运动规划与智能控制 {\hfill}} \\
+\makebox[7cm][s]{论文提交日期：{{\;2022\;}年{\;6\;}月{\;28\;}日}{\hfill}}%
+\makebox[7cm][s]{论文答辩日期：{{\;2022\;}年{~~*~~}月{~~*~~}日}{\hfill}} \\
+\makebox[7cm][s]{学位授予单位：华南理工大学 {\hfill}}%
+\makebox[7cm][s]{学位授予日期：{{\;\qquad\;}年{~~\enskip~~}月{~~\enskip~~}日}{\hfill}} \\
+\makebox[14cm][s]{答辩委员会成员：{\hfill}} \\
+\makebox[4cm][s]{主席：\uline{\qquad 孙** \hfill}} \\
+\makebox[13cm][s]{委员：\uline{\qquad 刘**、马**、魏*、刘** \hfill}} \\
+\end{minipage}
+
+\vfill
+
+
+
+
+
+%%==========================================================
+%% 原创性声明
+%%==========================================================
+\newpage
+\null
+
+\begin{center}
+\noindent
+\textbf{{\songti\erhao
+华南理工大学
+{\\}
+学位论文原创性声明
+}}
+\end{center}
+
+{%
+\raggedright        % 左对齐
+\parindent=1cm      % 首行缩进
+\songti\sihao
+\baselineskip=20pt  % 调整行距
+本人郑重声明：所呈交的论文是本人在导师的指导下独立进行研究所取得的研究成果。除了文中特别加以标注引用的内容外，本论文不包含任何其他个人或集体已经发表或撰写的成果作品。对本文的研究做出重要贡献的个人和集体，均已在文中以明确方式标明。本人完全意识到本声明的法律后果由本人承担。
+
+\bigskip
+作者签名：\makebox[5cm][s]{\hfill}
+日期：{{\qquad\quad}年{\qquad}月{\qquad}日}
+}%
+
+
+
+%%==========================================================
+%% 使用授权书
+%%==========================================================
+\bigskip
+\begin{center}
+\noindent
+\textbf{{\songti\erhao
+学位论文版权使用授权书
+}}
+\end{center}
+
+{%
+\raggedright        % 左对齐
+\parindent=1cm      % 首行缩进
+\songti\sihao
+\baselineskip=20pt  % 调整行距
+本学位论文作者完全了解学校有关保留、使用学位论文的规定，即：研究生在校攻读学位期间论文工作的知识产权单位属华南理工大学。学校有权保存并向国家有关部门或机构送交论文的复印件和电子版，允许学位论文被查阅（除在保密期内的保密论文外）；学校可以公布学位论文的全部或部分内容，可以允许采用影印、缩印或其它复制手段保存、汇编学位论文。本人电子文档的内容和纸质论文的内容相一致。
+
+本学位论文属于：
+
+$\Box$保密（校保密委员会审定为涉密学位论文时间：{\underline{\;~\quad}年\underline{\quad}月\underline{\quad}日}），于{\underline{\qquad} 年\underline{\quad}月\underline{\quad}日}解密后适用本授权书。
+
+$\Box$不保密,同意在校园网上发布，供校内师生和与学校有共享协议的单位浏览；同意将本人学位论文编入有关数据库进行检索，传播学位论文的全部或部分内容。
+
+{\quad}（请在以上相应方框内打“$\surd$”）
+
+\bigskip
+作者签名：{\qquad}\makebox[5cm][s]{\hfill}
+日期：{\hfill}\par
+指导教师签名：\makebox[5cm][s]{\hfill}
+日期：{\hfill}\par
+作者联系电话：\makebox[5cm][s]{\hfill}
+电子邮箱：{\hfill}\par
+联系地址(含邮编)：
+}%
+
+
+\vfill
+
+
+\fi
+
+
+
+\baselineskip=1\baselineskip    % 调整行距
+\normalsize                     % 后文字体：小四宋体
+
+
+%%
+%% Copyright: Andy GAO (华工自动化)
+%%
+%%==========================================================
+%%          华南理工大学博士学位论文——扉页
+%%      Author: Andy GAO        Date: 2022.01.
+%%==========================================================
+%%

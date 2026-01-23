@@ -1,0 +1,77 @@
+%%
+%% Copyright: Andy GAO (华工自动化)
+%%
+%%==========================================================
+%%          华南理工大学博士学位论文——第五章
+%%       Author: Andy GAO        Date: 2022.01.
+%%==========================================================
+%%
+
+\chapter{算法-算法-算法-算法-算法-算法-算法-算法-算法-算法-算法}
+\label{cha:Chapter5}
+
+
+\section{引言}
+\label{sec:5_Introduction}
+
+引言引言引言引言引言引言引言引言。
+
+
+
+\section{算法}
+\label{sec:5_EnvironmentModelling}
+
+算法算法算法算法算法，搜索过程如算法{\ref{alg:5_WorkspaceSearching}}所述。
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Algorithm
+\begin{algorithm}[!ht]
+\Indp               % 增大算法主体的缩进宽度
+\SetInd{2em}{0.0em} % sets the size of the space before the vertical rule and after.
+\LinesNumbered      % 显示行号
+\setstretch{1.5}    % 设置行距为原行距的 1.5 倍
+\caption{基于微元法搜索工作空间及其包络算法}
+\label{alg:5_WorkspaceSearching}
+%%--------------------------------------------------- 算法主体
+  \KwIn{各关节转动范围，运动参数上下限（${\beta}_{\rm min}$，${\beta}_{\rm max}$，$pd_{\rm max}$）} % 符号\;输出分号并换行
+  \For{吸盘俯仰角 ${\beta} := {\beta}_{\rm min}$ \KwTo ${\beta}_{\rm max}$}{
+    \For{极角 ${\gamma} := -{\pi}$ \KwTo ${\pi}$}{
+      \For{极径 $pd := 0$ \KwTo $pd_{\rm max}$}{
+        {$x_{\rm f} = pd \cdot \cos{\gamma}$，$y_{\rm f} = pd \cdot \sin{\gamma}$；}\\
+        {基于逆运动学方程计算各关节变量；}\\
+        {检验各关节角度是否满足关节转动约束；}\\
+        {记录有效的极径${\Omega}_{\rm p} \leftarrow pd$；}\\
+      }
+    \If{${\Omega}_{\rm p}$非空}{
+      {记录当前有效的极角${\gamma}$；}\\
+      {计算并记录有效的$x_{\rm f}$，$y_{\rm f}$，${\beta}$；}\\
+      {寻找有效极径的最值；}%\\
+      {计算并记录有效的$x_{\rm f}$与$y_{\rm f}$的最值；}\\
+    }
+    }
+  }
+  \KwOut{有效工作空间及其包络线}
+%%---------------------------------------------------
+\end{algorithm}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Algorithm
+%
+
+
+算法算法算法算法算法算法算法算法算法算法。
+
+
+
+\section{本章小结}
+\label{sec:5_Conclusion}
+
+本章小结本章小结本章小结本章小结本章小结本章小结。
+
+
+
+%%
+%% Copyright: Andy GAO (华工自动化)
+%%
+%%==========================================================
+%%          华南理工大学博士学位论文——第五章
+%%       Author: Andy GAO        Date: 2022.01.
+%%==========================================================
+%%

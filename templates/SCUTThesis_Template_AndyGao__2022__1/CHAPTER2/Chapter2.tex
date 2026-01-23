@@ -1,0 +1,587 @@
+%%
+%% Copyright: Andy GAO (华工自动化)
+%%
+%%==========================================================
+%%          华南理工大学博士学位论文——第二章
+%%       Author: Andy GAO        Date: 2022.01.
+%%==========================================================
+%%
+
+\chapter{数学公式-数学公式-数学公式-数学公式-数学公式-数学公式}
+\label{cha:Chapter2}
+
+
+\section{引言}
+\label{sec:2_Introduction}
+
+引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言引言。
+
+
+
+\section{数学公式}
+\label{sec:2_MechanicalDesign}
+
+机器人的机械结构设计机器人的机械结构设计分别如图{\ref{fig:2_PhysicalWelCH}}与图{\ref{fig:2_VirtualWelCH}}所示。
+
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Figure
+\begin{figure}
+  \centering
+  \subfloat{
+  \includegraphics[width=0.45\linewidth,height=0.30\linewidth]{CHAPTER2/FIGs/tmp} }
+  \qquad%\hfill
+  \subfloat{
+  \includegraphics[width=0.45\linewidth,height=0.30\linewidth]{CHAPTER2/FIGs/tmp} }
+  \caption{吸附式攀爬六足机器人WelCH的物理样机模型}
+  \label{fig:2_PhysicalWelCH}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Figure
+%
+
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Figure
+\begin{figure}
+  \centering
+  \includegraphics[width=0.5\linewidth]{CHAPTER2/FIGs/tmp}
+  \caption{吸附式攀爬六足机器人WelCH的SolidWorks虚拟原型}
+  \label{fig:2_VirtualWelCH}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Figure
+%
+
+
+
+\subsection{数学公式数学公式}
+\label{sec:2_StructureLayout}
+
+机体与支链结构布局机体与支链结构布局，如图{\ref{fig:2_Body&Limb}\subref{fig:2_BodyOfWelCH}}所示。
+
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Figure
+\begin{figure}[t]
+  \centering
+  \subfloat[]{ \label{fig:2_BodyOfWelCH}
+  \includegraphics[width=0.35\linewidth,height=0.35\linewidth]{CHAPTER2/FIGs/tmp}}
+  \qquad%\hfill
+  \subfloat[]{ \label{fig:2_LimbOfWelCH}
+  \includegraphics[width=0.35\linewidth,height=0.35\linewidth]{CHAPTER2/FIGs/tmp}}
+  \caption{吸附式攀爬六足机器人WelCH的机体平台与单腿支链的结构布局}
+  \label{fig:2_Body&Limb}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Figure
+%
+
+
+机体与支链结构布局机体与支链结构布局（如图{\ref{fig:2_Body&Limb}\subref{fig:2_LimbOfWelCH}}所示）。
+髋关节（记为关节1）的旋转轴线经过连接点$V_{\ell}$且垂直于机体平台平面。。。。。。（对应于关节3相对于关节2存在幅值为$90^{\circ}$ 的初始扭转角），该位形亦称为是六足机器人WelCH的{\it{标称位形}}。
+机体与支链结构布局机体与支链结构布局如表{\ref{tab:2_JointRotationRange}}所列。
+
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Table
+\begin{table}[t]
+\setstretch{1.5}
+\centering
+\caption{单腿支链上四个主动关节的有效旋转范围}
+\label{tab:2_JointRotationRange}
+\begin{tabular}{ccc}
+\toprule[1.5pt]
+\multirow{2}{*}{旋转副}    &   \multicolumn{2}{c}{关节转动范围}   \\
+                               \cline{2-3}
+                           &   {角度制（${{}^\circ}$）}     &   {弧度制（${\rm rad}$）} \\
+\hline
+髋关节（关节1）            &   $[-60, 60]$               &   $[-\frac{\pi}{3}, \frac{\pi}{3}]$ \\
+胫关节（关节2）            &   $[-90, 90]$               &   $[-\frac{\pi}{2}, \frac{\pi}{2}]$ \\
+膝关节（关节3）            &   $[-45, 80]$               &   $[-\frac{\pi}{4}, \frac{4\pi}{9}]$ \\
+踝关节（关节4）            &   $[-90, 90]$               &   $[-\frac{\pi}{2}, \frac{\pi}{2}]$ \\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Table
+%
+
+
+
+\subsection{数学公式数学公式数学公式}
+\label{sec:2_HardwareDesign}
+
+机器人的硬件系统设计机器人的硬件系统设计如图{\ref{fig:2_HardwareSystem}}所示。
+
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Figure
+\begin{figure}
+  \centering
+  \includegraphics[width=0.9\linewidth]{CHAPTER2/FIGs/tmp}
+  \caption{吸附式攀爬六足机器人WelCH的硬件系统架构图}
+  \label{fig:2_HardwareSystem}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Figure
+%
+
+
+机器人的硬件系统设计机器人的硬件系统设计机器人的硬件系统设计。
+该型电机兼具转矩特性良好、效率较高、载荷较强、体量轻小等优点，其部分参数配置如表{\ref{tab:2_ServoMotorConfiguration}}所列。
+
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Table
+\begin{table}
+\setstretch{1.5}
+\centering
+\caption{DCX22L型有刷直流电机的参数配置表}
+\label{tab:2_ServoMotorConfiguration}
+\begin{tabular}{*{2}{c}@{\hspace{2.5em}}*{2}{c}}
+\toprule[1.5pt]
+条目                        &       数值            &       条目                            &       数值 \\
+\hline
+标称电压                    &       48 V            &       空载转速                        &       10100 rpm \\
+空载电流                    &       16.2 mA         &       标称转速                        &       9020 rmp \\
+标称转矩（最大连续转矩）    &       30.3 mNm        &       标称电流（最大连续电流）        &       0.687 A \\
+失速转矩                    &       294 mNm         &       失速电流                        &       6.5 A \\
+最大效率                    &       89.9{\%}        &       最大输出功率                    &       45.8 W \\
+最大允许转速                &       18000 rpm       &       最大轴向载荷                    &       2.5 N \\
+最大径向载荷                &       16 N            &       质量                            &       100 g \\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Table
+%
+
+
+机器人的硬件系统设计机器人的硬件系统设计。
+
+
+
+\section{六足机器人的数学公式}
+\label{sec:2_Kinematics}
+
+六足机器人的运动学建模六足机器人的运动学建模六足机器人的运动学建模六足机器人的运动学建模六足机器人的运动学建模。
+
+
+\subsection{六足机器人的数学公式数学公式}
+\label{sec:2_ForwardKinematics}
+
+六足机器人的正运动学建模如表{\ref{tab:2_PrototypeDimension}}所列。
+
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Table
+\begin{table}
+\setstretch{1.5}
+\centering
+\caption{机器人WelCH的物理样机的尺寸配置表}
+\label{tab:2_PrototypeDimension}
+\begin{tabular}{*{3}{c}@{\hspace{4em}}*{3}{c}}
+\toprule[1.5pt]
+条目  &  符号表示  &  数值  &  条目  &  符号表示  &  数值 \\
+\hline
+机体半径  &  $R_{\rm B}$  &  0.18{\:}m  &  吸盘半径  &  $r_{\rm S}$  &  0.06{\:}m \\
+连杆1长度  &  $L_1$  &  0.09{\:}m  &  连杆2长度  &  $L_2$  &  0.15{\:}m \\
+连杆3长度  &  $L_3$  &  0.16{\:}m  &  连杆4长度  &  $L_4$  &  0.15{\:}m \\
+整机质量  &  $M$  &  25{\:}kg \\
+\bottomrule[1.5pt]
+\end{tabular}
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Table
+%
+
+
+六足机器人的正运动学建模六足机器人的正运动学建模，相应的方向向量${\bm {\omega}}_j$（$j = 1,2,3,4$）为
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation}
+{\bm {\omega}}_1
+=
+\begin{bmatrix}
+0 \\ 0 \\ 1 \\
+\end{bmatrix} ,
+{\quad}
+{\bm {\omega}}_2 = {\bm {\omega}}_3 = {\bm {\omega}}_4
+=
+\begin{bmatrix}
+\sin{{\alpha}_{\ell}} \\
+-\cos{{\alpha}_{\ell}} \\
+0 \\
+\end{bmatrix} .
+\label{eq:2_AxisDirection}
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+
+各关节轴线的位置矢量${\bm r}_j$可取为
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation}
+\begin{aligned}
+{\bm r}_1
+&=
+\begin{bmatrix}
+R_{\rm B} \cdot \cos{{\alpha}_{\ell}} \\
+R_{\rm B} \cdot \sin{{\alpha}_{\ell}} \\
+0 \\
+\end{bmatrix} ,
+{\quad}
+%
+{\bm r}_2
+=
+\begin{bmatrix}
+(R_{\rm B} + L_1) \cdot \cos{{\alpha}_{\ell}} \\
+(R_{\rm B} + L_1) \cdot \sin{{\alpha}_{\ell}} \\
+0 \\
+\end{bmatrix} ,
+\\
+%
+{\bm r}_3
+&=
+\begin{bmatrix}
+(R_{\rm B} + L_1 + L_2) \cdot \cos{{\alpha}_{\ell}} \\
+(R_{\rm B} + L_1 + L_2) \cdot \sin{{\alpha}_{\ell}} \\
+0 \\
+\end{bmatrix} ,
+{\quad}
+%
+{\bm r}_4
+=
+\begin{bmatrix}
+(R_{\rm B} + L_1 + L_2) \cdot \cos{{\alpha}_{\ell}} \\
+(R_{\rm B} + L_1 + L_2) \cdot \sin{{\alpha}_{\ell}} \\
+-L_3 \\
+\end{bmatrix} .
+\end{aligned}
+\label{eq:2_AxisPositionVector}
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+
+则依据如下定义式：
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation}
+{\bm {\xi}}_j
+{\:\triangleq\:}
+\begin{bmatrix}
+{\bm {\omega}}_j \\ {\bm v}_j \\
+\end{bmatrix}
+=
+\begin{bmatrix}
+{\bm {\omega}}_j \\
+{\bm r}_j \times {\bm {\omega}}_j \\
+\end{bmatrix} ,
+\label{eq:2_ScrewRelationship}
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+可得各关节的单位运动旋量${\bm {\xi}}_j$为
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation}
+\begin{aligned}
+{\bm {\xi}}_1
+&=
+\begin{bmatrix}
+0, 0, 1, R_{\rm B} \cdot \sin{{\alpha}_{\ell}}, -R_{\rm B} \cdot \cos{{\alpha}_{\ell}}, 0
+\end{bmatrix}^{\rm T} ,
+\\
+%
+{\bm {\xi}}_2
+&=
+\begin{bmatrix}
+\sin{{\alpha}_{\ell}}, -\cos{{\alpha}_{\ell}}, 0, 0, 0, -(R_{\rm B} + L_1)
+\end{bmatrix}^{\rm T} ,
+\\
+%
+{\bm {\xi}}_3
+&=
+\begin{bmatrix}
+\sin{{\alpha}_{\ell}}, -\cos{{\alpha}_{\ell}}, 0, 0, 0, -(R_{\rm B} + L_1 + L_2)
+\end{bmatrix}^{\rm T} ,
+\\
+%
+{\bm {\xi}}_4
+&=
+\begin{bmatrix}
+\sin{{\alpha}_{\ell}}, -\cos{{\alpha}_{\ell}}, 0, -L_3 \cdot \cos{{\alpha}_{\ell}}, -L_3 \cdot \sin{{\alpha}_{\ell}}, -(R_{\rm B} + L_1 + L_2)
+\end{bmatrix}^{\rm T} .
+\end{aligned}
+\label{eq:2_JointMotionScrew}
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+
+而在初始标称位形下，足端系${\Sigma}^{{\rm F}_{\ell}}$相对于机体系${\Sigma}^{\rm B}$的齐次变换矩阵为
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation}
+\begin{aligned}
+{\bm g}({\bm 0})
+&=
+{\rm Rot}(z,{\alpha}_{\ell}) \cdot {\rm Trans}(R_{\rm B},0,0) \cdot {\rm Rot}(x,\frac{\pi}{2}) \cdot {\rm Trans}(L_1+L_2,0,0) \\
+&{\quad}
+\cdot {\rm Rot}(z,-\frac{\pi}{2}) \cdot {\rm Trans}(L_3+L_4,0,0) \\
+&=
+\begin{bmatrix}
+ 0  &  \cos{{\alpha}_{\ell}}  &   \sin{{\alpha}_{\ell}}  &  (R_{\rm B} + L_1 + L_2) \cdot \cos{{\alpha}_{\ell}} \\
+ 0  &  \sin{{\alpha}_{\ell}}  &  -\cos{{\alpha}_{\ell}}  &  (R_{\rm B} + L_1 + L_2) \cdot \sin{{\alpha}_{\ell}} \\
+-1  &  0                      &   0                      &  -(L_3+L_4) \\
+ 0  &  0                      &   0                      &  1 \\
+\end{bmatrix} .
+\end{aligned}
+\label{eq:2_InitialTransformation}
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+其中，${\rm Rot}({\kappa},{\phi})$表示绕着${\kappa}$轴旋转角度${\phi}$所对应的齐次旋转变换矩阵；
+${\rm Trans}(t_x,t_y,t_z)$表示与向量${\bm t} {\:\triangleq\:} [t_x,t_y,t_z]^{\rm T}$对应的齐次平移变换矩阵。
+
+具体来说，列向量${\bm t}_j = ({\bm I} - {\rm e}^{q_j \widehat{{\bm {\omega}}}_j})({\bm {\omega}}_j \times {\bm v}_j) + q_j {\bm {\omega}}_j {\bm {\omega}}_j^{\rm T} {\bm v}_j$（$j = 1,2,3,4$）的表达式为
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation*}
+\begin{aligned}
+{\bm t}_1
+&=
+\begin{bmatrix}
+R_{\rm B} [ {\cos{{\alpha}_{\ell}}} - {\cos({\alpha}_{\ell} + q_1)} ] \\
+R_{\rm B} [ {\sin{{\alpha}_{\ell}}} - {\sin({\alpha}_{\ell} + q_1)} ] \\
+0
+\end{bmatrix} ,
+{\quad}
+%
+{\bm t}_2
+=
+\begin{bmatrix}
+( R_{\rm B} + L_1 ) ( 1 - \cos{q_2} ) {\cos{{\alpha}_{\ell}}} \\
+( R_{\rm B} + L_1 ) ( 1 - \cos{q_2} ) {\sin{{\alpha}_{\ell}}} \\
+-( R_{\rm B} + L_1 ) \sin{q_2}
+\end{bmatrix} ,
+\\
+%
+{\bm t}_3
+&=
+\begin{bmatrix}
+( R_{\rm B} + L_1 + L_2 ) ( 1 - \cos{q_3} ) {\cos{{\alpha}_{\ell}}} \\
+( R_{\rm B} + L_1 + L_2 ) ( 1 - \cos{q_3} ) {\sin{{\alpha}_{\ell}}} \\
+-( R_{\rm B} + L_1 + L_2 ) \sin{q_3}
+\end{bmatrix} ,
+\\
+%
+{\bm t}_4
+&=
+\begin{bmatrix}
+[ ( R_{\rm B} + L_1 + L_2 ) ( 1 - \cos{q_4} ) - {L_3}{\sin{q_4}} ] {\cos{{\alpha}_{\ell}}} \\
+[ ( R_{\rm B} + L_1 + L_2 ) ( 1 - \cos{q_4} ) - {L_3}{\sin{q_4}} ] {\sin{{\alpha}_{\ell}}} \\
+-( R_{\rm B} + L_1 + L_2 ){\sin{q_4}} - {L_3}( 1 - \cos{q_4} )
+\end{bmatrix} .
+\end{aligned}
+\label{eq:2_PositionInExponentialMap}
+\end{equation*}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+
+六足机器人的正运动学建模六足机器人的正运动学建模六足机器人的正运动学建模。。。。。。
+其中，机体相对于各足端系${\Sigma}^{{\rm F}_{\ell}}$的瞬时位置坐标为
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation}
+\begin{cases}
+\begin{aligned}
+b_x
+&=
+-( R_{\rm B} \cdot \cos{q_1} + L_1 ) \cdot {\rm S}_{234} - L_2 \cdot {\rm S}_{34} - L_3 \cdot \cos{q_4} - L_4 , \\
+%
+b_y
+&=
+-( R_{\rm B} \cdot \cos{q_1} + L_1 ) \cdot {\rm C}_{234} - L_2 \cdot {\rm C}_{34} + L_3 \cdot \sin{q_4} , \\
+%
+b_z
+&=
+-R_{\rm B} \cdot \sin{q_1} . \\
+\end{aligned}
+\end{cases}
+\label{eq:2_Body2FootPosition}
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+上式中各符号的含义与前文一致。
+
+
+
+\subsection{六足机器人的数学公式数学公式数学公式}
+\label{sec:2_InverseKinematics}
+
+六足机器人的逆运动学解算六足机器人的逆运动学解算。。。。。。
+其中，${\rm sgn}(\cdot)$表示符号函数，即有：
+$
+{\rm sgn}(x) =
+\begin{cases}
+\begin{aligned}
+&1 ,   &   \text{若} x > 0 , \\
+&0 ,   &   \text{若} x = 0 , \\
+&-1,   &   \text{若} x < 0 . \\
+\end{aligned}
+\end{cases}
+$
+
+
+
+\subsubsection{基于代数法的数学公式}
+\label{sec:2_Algebraic2InverseKinematics}
+
+\begin{lemma}
+\label{lem:2_TrigonometricEquations}
+基于代数法的逆运动学分析基于代数法的逆运动学分析基于代数法的逆运动学分析基于代数法的逆运动学分析。。。。。。
+的解为
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation}
+\begin{cases}
+\begin{aligned}
+x &=
+2 \cdot \arctan{ \frac{2AC \pm \sqrt{4 C^2 D^2 - (A^2 + B^2 - C^2 - D^2)^2}}{A^2 + (B + C)^2 - D^2} } ,\\
+%
+y &=
+2 \cdot \arctan{ \frac{-2BD \pm \sqrt{4 C^2 D^2 - (A^2 + B^2 - C^2 - D^2)^2}}{(A + D)^2 + B^2 - C^2} } ,\\
+\end{aligned}
+\end{cases}
+\label{eq:2_Solution4BinaryEquations}
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+其中，$A$、$B$、$C$、$D$均为已知常数。
+\end{lemma}
+
+
+\begin{proof}
+%%
+基于代数法的逆运动学分析基于代数法的逆运动学分析基于代数法的逆运动学分析基于代数法的逆运动学分析基于代数法的逆运动学分析。
+证毕。
+%
+\end{proof}
+
+
+基于代数法的逆运动学分析基于代数法的逆运动学分析。。。。。。
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation}
+\begin{cases}
+\begin{aligned}
+A &{\;\triangleq\;}
+p_z + L_4 \cdot \cos({\beta} - {\rm sgn}({\alpha}_{\ell}) \cdot {\varphi}) , \\
+%
+B &{\;\triangleq\;}
+\frac{p_y - R_{\rm B} \cdot \sin{{\alpha}_{\ell}}}{\sin({\alpha}_{\ell} + q_1)} - L_1 - L_4 \cdot \sin({\beta} - {\rm sgn}({\alpha}_{\ell}) \cdot {\varphi}) \text{（若$\sin({\alpha}_{\ell} + q_1) \neq 0$）}, \\
+& \text{或}{\;}
+B {\;\triangleq\;}
+\frac{p_x - R_{\rm B} \cdot \cos{{\alpha}_{\ell}}}{\cos({\alpha}_{\ell} + q_1)} - L_1 - L_4 \cdot \sin({\beta} - {\rm sgn}({\alpha}_{\ell}) \cdot {\varphi}) \text{（若$\cos({\alpha}_{\ell} + q_1) \neq 0$）}, \\
+%
+C &{\;\triangleq\;} L_2 ,
+{\quad}
+%
+D {\;\triangleq\;} -L_3 ,
+{\quad}
+%
+x {\;\triangleq\;} q_2 ,
+{\quad}
+%
+y {\;\triangleq\;} q_2 + q_3 .
+\end{aligned}
+\end{cases}
+\label{eq:2_DefineParameters}
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+
+基于代数法的逆运动学分析基于代数法的逆运动学分析。
+
+
+
+\subsubsection{基于几何法的数学公式}
+\label{sec:2_Geometric2InverseKinematics}
+
+基于几何法的逆运动学分析基于几何法的逆运动学分析基于几何法的逆运动学分析基于几何法的逆运动学分析基于几何法的逆运动学分析：
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation}
+\begin{cases}
+\begin{aligned}
+& \sin(q_2 - {\phi}) =
+\frac{|D|}{\sqrt{A^2 + B^2}} \sin(q_3 + \frac{\pi}{2}) = \frac{|D| \cos{q_3}}{\sqrt{A^2 + B^2}} &{\quad} \text{（正弦定理）} \\
+%
+& \cos(q_2 - {\phi}) =
+\frac{A^2 + B^2 + C^2 - D^2}{2|C| \sqrt{A^2 + B^2}} &{\quad} \text{（余弦定理）} \\
+%
+& {\phi} =
+{\rm Atan2}(A, B) &{\quad} \text{（辅助角）} \\
+\end{aligned}
+\end{cases}
+\label{eq:2_EquationsAboutJoint2}
+\end{equation}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Equation
+\begin{equation*}
+{\;\Longrightarrow\;}
+\begin{cases}
+\begin{aligned}
+& \tan(q_2 - {\phi}) =
+\frac{2|C||D| \cos{q_3}}{A^2 + B^2 + C^2 - D^2} \\
+%
+& {\phi} =
+{\rm Atan2}(A, B) \\
+\end{aligned}
+\end{cases}
+\end{equation*}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% End Equation
+%
+基于几何法的逆运动学分析基于几何法的逆运动学分析基于几何法的逆运动学分析基于几何法的逆运动学分析。
+
+
+\begin{remark}
+基于几何法的逆运动学分析基于几何法的逆运动学分析基于几何法的逆运动学分析基于几何法的逆运动学分析基于几何法的逆运动学分析。
+\end{remark}
+
+
+
+
+\section{注记与序号列表}
+\label{sec:2_Jacobian}
+
+速度雅可比矩阵分析速度雅可比矩阵分析速度雅可比矩阵分析速度雅可比矩阵分析。
+
+
+\begin{remark}
+关于速度雅可比矩阵分析速度雅可比矩阵分析速度雅可比矩阵分析速度雅可比矩阵分析速度雅可比矩阵分析如下：
+\begin{compactenum}[\hspace{2em}(i)]
+  \item
+  注记与序号列表注记与序号列表注记与序号列表注记与序号列表注记与序号列表注记与序号列表；
+
+  \item
+  注记与序号列表；
+
+  \item
+  注记与序号列表注记与序号列表。
+\end{compactenum}
+\end{remark}
+
+
+
+\section{本章小结}
+\label{sec:2_Conclusion}
+
+本章小结本章小结本章小结本章小结本章小结本章小结本章小结本章小结本章小结本章小结本章小结本章小结。
+
+
+%%
+%% Copyright: Andy GAO (华工自动化)
+%%
+%%==========================================================
+%%          华南理工大学博士学位论文——第二章
+%%       Author: Andy GAO        Date: 2022.01.
+%%==========================================================
+%%
