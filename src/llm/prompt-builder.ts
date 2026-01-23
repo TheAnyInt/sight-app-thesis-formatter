@@ -27,7 +27,7 @@ export function buildChunkPrompt(chunk: ContentChunk, hasFigureMarkers: boolean,
 例如 [FIGURE:docximg1] 应转换为：
 \\\\begin{figure}[H]
     \\\\centering
-    \\\\includegraphics[width=0.8\\\\textwidth]{docximg1.png}
+    \\\\includegraphics[width=0.8\\\\textwidth]{docximg1}
     \\\\caption{根据上下文推断的图片描述}
     \\\\label{fig:docximg1}
 \\\\end{figure}

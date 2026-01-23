@@ -70,7 +70,7 @@ export class FigureProcessor {
       // Generate LaTeX figure environment
       return `\\begin{figure}[H]
     \\centering
-    \\includegraphics[width=0.8\\textwidth]{${figureId}.png}
+    \\includegraphics[width=0.8\\textwidth]{${figureId}}
     \\caption{${caption}}
     \\label{${label}}
 \\end{figure}`;

@@ -12,7 +12,7 @@ describe('FigureProcessor', () => {
       const result = FigureProcessor.convertFigureMarkers(input);
 
       expect(result).toContain('\\begin{figure}[H]');
-      expect(result).toContain('\\includegraphics[width=0.8\\textwidth]{docximg1.png}');
+      expect(result).toContain('\\includegraphics[width=0.8\\textwidth]{docximg1}');
       expect(result).toContain('\\caption{');
       expect(result).toContain('\\label{fig:docximg1}');
       expect(result).toContain('\\end{figure}');
@@ -22,7 +22,7 @@ describe('FigureProcessor', () => {
       const input = '[FIGURE:pdfimg2]';
       const result = FigureProcessor.convertFigureMarkers(input);
 
-      expect(result).toContain('\\includegraphics[width=0.8\\textwidth]{pdfimg2.png}');
+      expect(result).toContain('\\includegraphics[width=0.8\\textwidth]{pdfimg2}');
       expect(result).toContain('\\label{fig:pdfimg2}');
     });
 
@@ -30,7 +30,7 @@ describe('FigureProcessor', () => {
       const input = '[FIGURE:pdfimg3:extraction_failed]';
       const result = FigureProcessor.convertFigureMarkers(input);
 
-      expect(result).toContain('\\includegraphics[width=0.8\\textwidth]{pdfimg3.png}');
+      expect(result).toContain('\\includegraphics[width=0.8\\textwidth]{pdfimg3}');
       expect(result).toContain('\\label{fig:pdfimg3}');
     });
 
