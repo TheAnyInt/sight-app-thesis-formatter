@@ -95,12 +95,12 @@
 \XeTeXlinebreaklocale "zh"                              %采用中文断行方式
 \XeTeXlinebreakskip = 0pt plus 1pt                      %字元间可加入0pt~1pt的弹性间距，这样才能排出左右对齐的段落。
 
-% 中文字体 - 使用bundled字体文件 (templates/shared/)
-\setCJKmainfont{../shared/simsun.ttc}
-\setCJKfamilyfont{song}{../shared/simsun.ttc}
-\setCJKfamilyfont{hei}{../shared/simhei.ttf}
-\setCJKfamilyfont{kai}{../shared/kaiti_GB2312.TTF}
-\setCJKfamilyfont{fang}{../shared/simsun.ttc}
+% 中文字体 - 使用bundled字体文件 (与tex文件同目录)
+\setCJKmainfont{simsun.ttc}
+\setCJKfamilyfont{song}{simsun.ttc}
+\setCJKfamilyfont{hei}{simhei.ttf}
+\setCJKfamilyfont{kai}{kaiti_GB2312.TTF}
+\setCJKfamilyfont{fang}{simsun.ttc}
 
 % 定义字体
 \newcommand{\songti}{\CJKfamily{song}}

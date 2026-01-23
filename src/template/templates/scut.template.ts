@@ -25,6 +25,7 @@ export const scutTemplate = {
     'TITLEPAGE/FIGs/SCUTemblem.png',
     'simsun.ttc',
     'simhei.ttf',
+    'kaiti_GB2312.TTF',
   ],
   texContent: `%%
 %% 华南理工大学博士/硕士学位论文 LaTeX 模板

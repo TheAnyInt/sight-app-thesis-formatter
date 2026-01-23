@@ -24,6 +24,7 @@ export const njulifeTemplate = {
   // Shared fonts from templates/shared/
   assets: [
     'simsun.ttc',
+    'simhei.ttf',
   ],
   texContent: `% 南京大学生命科学学院硕士学位论文 LaTeX 模板
 % NJU Life Sciences Master Thesis Template
