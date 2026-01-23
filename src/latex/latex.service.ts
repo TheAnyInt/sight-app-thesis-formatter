@@ -60,6 +60,58 @@ export class LatexService {
   }
 
   /**
+   * Remove numbering prefixes from section titles
+   * Handles patterns: 第X章、第X节、Chapter X、Section X、X.Y.Z、etc.
+   * This serves as a safety net when LLM fails to remove these prefixes
+   */
+  cleanSectionTitle(title: string): string {
+    if (!title) return '';
+
+    return title
+      // Chinese chapter/section: 第一章、第1章、第一节、第1节 等
+      .replace(/^第[一二三四五六七八九十百千万\d]+[章节]\s*/g, '')
+      // English chapter/section: Chapter 1、Section 1.2、Part 1 等
+      .replace(/^(Chapter|Section|Part)\s+[\d.]+\s*/gi, '')
+      // Numeric prefixes: 1.、1.1、1.1.1 等
+      .replace(/^[\d.]+\s+/g, '')
+      .trim();
+  }
+
+  /**
+   * Remove section header from content start (safety net for duplicate prevention)
+   * If content starts with a section header that matches the title, remove it
+   */
+  cleanSectionContent(content: string, title: string): string {
+    if (!content) return '';
+
+    const escapedTitle = this.escapeRegExpChars(title);
+
+    // Patterns to match section headers at content start
+    const patterns = [
+      // 第一章 XXX、第1章 XXX
+      new RegExp(`^第[一二三四五六七八九十百千万\\d]+[章节]\\s*${escapedTitle}\\s*\\n?`),
+      // 1.1 XXX、1.1.1 XXX
+      new RegExp(`^[\\d.]+\\s+${escapedTitle}\\s*\\n?`),
+      // Chapter X XXX
+      new RegExp(`^(Chapter|Section|Part)\\s+[\\d.]+\\s*${escapedTitle}\\s*\\n?`, 'i'),
+    ];
+
+    let result = content;
+    for (const pattern of patterns) {
+      result = result.replace(pattern, '');
+    }
+
+    return result.trim();
+  }
+
+  /**
+   * Escape special regex characters in a string
+   */
+  private escapeRegExpChars(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
    * Prepare document data for Mustache rendering
    * Escapes LaTeX special characters in text fields
    * Adds level flags (isLevel1, isLevel2, isLevel3) for sections
@@ -100,12 +152,20 @@ export class LatexService {
         prepared[key] = value.map((item) => {
           if (typeof item === 'object') {
             const preparedItem = this.prepareDocumentData(item);
-            // Add level flags for sections
+            // Add level flags for sections and clean title prefixes
             if ('level' in item) {
               preparedItem.isLevel1 = item.level === 1;
               preparedItem.isLevel2 = item.level === 2;
               preparedItem.isLevel3 = item.level === 3;
               preparedItem.isLevel4 = item.level === 4;
+              // Clean section title to remove numbering prefixes (safety net for LLM output)
+              if ('title' in item && typeof item.title === 'string') {
+                preparedItem.title = this.cleanSectionTitle(this.escapeLatex(item.title));
+              }
+              // Clean section content to remove leading section headers (safety net for duplicate prevention)
+              if ('content' in item && typeof item.content === 'string' && 'title' in item) {
+                preparedItem.content = this.cleanSectionContent(item.content, item.title as string);
+              }
             }
             return preparedItem;
           }
@@ -119,20 +179,65 @@ export class LatexService {
     }
 
     // Flatten metadata to top-level with template-friendly field names
+    // Also preserve original metadata object with escaped values for templates that use {{#metadata}}{{field}}{{/metadata}}
     if (document.metadata) {
       const meta = document.metadata;
-      // Direct mappings (escaped)
-      if (meta.title) prepared.title = this.escapeLatex(meta.title);
-      if (meta.title_en) prepared.titleEn = this.escapeLatex(meta.title_en);
-      if (meta.author_name) prepared.author = this.escapeLatex(meta.author_name);
-      if (meta.student_id) prepared.studentId = this.escapeLatex(meta.student_id);
-      if (meta.school) prepared.college = this.escapeLatex(meta.school);
-      if (meta.major) prepared.major = this.escapeLatex(meta.major);
-      if (meta.supervisor) prepared.advisor = this.escapeLatex(meta.supervisor);
-      if (meta.date) prepared.date = this.escapeLatex(meta.date);
-      // Also keep original names for templates that use them
-      if (meta.author_name) prepared.author_name = this.escapeLatex(meta.author_name);
-      if (meta.title_en) prepared.title_en = this.escapeLatex(meta.title_en);
+
+      // Preserve the original metadata object with escaped values for nested access
+      prepared.metadata = {};
+      for (const [key, value] of Object.entries(meta)) {
+        if (typeof value === 'string') {
+          prepared.metadata[key] = this.escapeLatex(value);
+        } else {
+          prepared.metadata[key] = value;
+        }
+      }
+
+      // Title variants
+      if (meta.title) {
+        prepared.title = this.escapeLatex(meta.title);
+      }
+      if (meta.title_en) {
+        prepared.titleEn = this.escapeLatex(meta.title_en);
+        prepared.title_en = this.escapeLatex(meta.title_en);
+      }
+
+      // Author variants
+      if (meta.author_name) {
+        prepared.author = this.escapeLatex(meta.author_name);
+        prepared.author_name = this.escapeLatex(meta.author_name);
+        prepared.authorCn = this.escapeLatex(meta.author_name);
+      }
+
+      // Supervisor variants (supervisor + advisor)
+      if (meta.supervisor) {
+        prepared.supervisor = this.escapeLatex(meta.supervisor);
+        prepared.advisor = this.escapeLatex(meta.supervisor);  // hunnu template uses advisor
+      }
+
+      // Department/School/College variants
+      if (meta.school) {
+        prepared.school = this.escapeLatex(meta.school);
+        prepared.college = this.escapeLatex(meta.school);      // hunnu template uses college
+        prepared.department = this.escapeLatex(meta.school);   // njuthesis/scut use department
+      }
+
+      // Student ID variants
+      if (meta.student_id) {
+        prepared.studentId = this.escapeLatex(meta.student_id);
+        prepared.student_id = this.escapeLatex(meta.student_id);
+      }
+
+      // Major
+      if (meta.major) {
+        prepared.major = this.escapeLatex(meta.major);
+      }
+
+      // Date variants
+      if (meta.date) {
+        prepared.date = this.escapeLatex(meta.date);
+        prepared.submitDate = this.escapeLatex(meta.date);
+      }
     }
 
     // Add Chinese/English abstract aliases
@@ -173,7 +278,8 @@ export class LatexService {
 
   /**
    * Parse references string into array format for LaTeX thebibliography
-   * Handles formats like "[1] Author..." or "1. Author..."
+   * Handles formats like "[1] Author...", "1. Author...", "【1】Author...", "(1) Author..."
+   * Falls back to paragraph-based splitting if no numbered format is detected
    */
   private parseReferencesToArray(refsString: string): Array<{ key: string; citation: string }> {
     const refs: Array<{ key: string; citation: string }> = [];
@@ -182,14 +288,22 @@ export class LatexService {
     const lines = refsString.split(/\n/);
     let currentRef = '';
     let refIndex = 0;
+    let numberedFormatDetected = false;
+
+    // Extended regex to match more reference number formats:
+    // [1], 【1】, (1), 1., 1), ①②③... (circled numbers)
+    const refNumberPattern = /^\[(\d+)\]|^【(\d+)】|^\((\d+)\)|^(\d+)[\.\)]\s*|^[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳]/;
+    // Pattern to remove the number prefix from the start of a reference
+    const prefixRemovalPattern = /^(?:\[\d+\]|【\d+】|\(\d+\)|\d+[\.\)]\s*|[①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳])\s*/;
 
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed) continue;
 
       // Check if line starts a new reference
-      const newRefMatch = trimmed.match(/^\[(\d+)\]|^(\d+)\.\s|^(\d+)\)\s/);
+      const newRefMatch = trimmed.match(refNumberPattern);
       if (newRefMatch) {
+        numberedFormatDetected = true;
         // Save previous reference
         if (currentRef) {
           refIndex++;
@@ -199,15 +313,15 @@ export class LatexService {
           });
         }
         // Start new reference (remove the number prefix)
-        currentRef = trimmed.replace(/^\[?\d+[\].)]\s*/, '');
+        currentRef = trimmed.replace(prefixRemovalPattern, '');
       } else {
         // Continue previous reference
         currentRef += ' ' + trimmed;
       }
     }
 
-    // Save last reference
-    if (currentRef) {
+    // Save last reference (only if we detected numbered format)
+    if (currentRef && numberedFormatDetected) {
       refIndex++;
       refs.push({
         key: `ref${refIndex}`,
@@ -215,6 +329,27 @@ export class LatexService {
       });
     }
 
+    // Fallback: if no numbered format was detected, try paragraph-based splitting
+    if (!numberedFormatDetected) {
+      this.logger.debug('No numbered reference format detected, falling back to paragraph splitting');
+      const paragraphs = refsString.split(/\n\s*\n/).filter((p) => p.trim().length > 0);
+
+      // If no double-newline paragraphs, try single newline with substantial content
+      const candidates = paragraphs.length > 1 ? paragraphs : lines.filter((l) => l.trim().length > 10);
+
+      for (const para of candidates) {
+        const trimmed = para.trim();
+        if (trimmed.length > 0) {
+          refIndex++;
+          refs.push({
+            key: `ref${refIndex}`,
+            citation: trimmed.replace(/\s+/g, ' '), // Normalize whitespace
+          });
+        }
+      }
+    }
+
+    this.logger.debug(`Parsed ${refs.length} references from input (numbered format: ${numberedFormatDetected})`);
     return refs;
   }
 

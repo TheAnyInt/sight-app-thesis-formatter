@@ -116,5 +116,53 @@ describe('FormulaProcessor', () => {
 
       expect(result).toBe(input);
     });
+
+    it('should reconstruct sum formula split across 5 lines (bug #6 case)', () => {
+      // This is the exact pattern from the bug report
+      const input = '𝑁\n∑\n𝐿= −\n𝑖=1\n𝑦𝑖log(𝑝𝑖)';
+      const result = FormulaProcessor.reconstructFormulas(input);
+
+      // Should produce a proper LaTeX sum formula
+      expect(result).toContain('$$');
+      expect(result).toContain('\\sum');
+      expect(result).toContain('_{');
+      expect(result).toContain('^{');
+    });
+
+    it('should reconstruct sum formula with regular ASCII characters', () => {
+      const input = 'N\n∑\nL= -\ni=1\nylog(p)';
+      const result = FormulaProcessor.reconstructFormulas(input);
+
+      expect(result).toContain('$$');
+      expect(result).toContain('\\sum');
+    });
+
+    it('should reconstruct product formula split across lines', () => {
+      const input = '𝑁\n∏\n𝑃=\n𝑖=1\n𝑥𝑖';
+      const result = FormulaProcessor.reconstructFormulas(input);
+
+      expect(result).toContain('$$');
+      expect(result).toContain('\\prod');
+    });
+
+    it('should handle FORMULA_BLOCK with space-joined content', () => {
+      // When PDF extraction joins formula lines with spaces
+      const input = '[FORMULA_BLOCK: 𝑁 ∑ 𝐿= − 𝑖=1 𝑦𝑖log(𝑝𝑖) :END_FORMULA_BLOCK]';
+      const result = FormulaProcessor.convertUnicodeMathToLatex(input);
+
+      expect(result).toContain('$$');
+      expect(result).toContain('\\sum');
+      expect(result).not.toContain('[FORMULA_BLOCK:');
+    });
+
+    it('should handle corrupted formula pattern like ∑= −=1log()', () => {
+      // This is the corrupted pattern mentioned in the bug
+      const input = '∑= −=1log()';
+      const result = FormulaProcessor.convertUnicodeMathToLatex(input);
+
+      // Should at least convert the sum symbol and wrap in math mode
+      expect(result).toContain('\\sum');
+      expect(result).toMatch(/\$.*\\sum.*\$/);
+    });
   });
 });

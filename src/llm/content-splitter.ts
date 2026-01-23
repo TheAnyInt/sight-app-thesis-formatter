@@ -24,6 +24,38 @@ const MAX_CHUNK_SIZE = 40000; // Characters per chunk
 const logger = new Logger('ContentSplitter');
 
 /**
+ * Remove section header from content start to prevent duplicate output
+ * Handles patterns: 第X章 标题、1.1 标题、Chapter X Title, etc.
+ */
+function stripSectionHeaderFromContent(content: string, sectionTitle: string): string {
+  if (!content || !sectionTitle) return content;
+
+  // Patterns to match section headers at the start of content
+  const patterns = [
+    // 第一章 绪论、第1章 绪论
+    /^第[一二三四五六七八九十百千万\d]+[章节]\s*.+?\n/,
+    // 1.1 研究背景、1.1.1 问题描述
+    /^[\d.]+\s+.+?\n/,
+    // Chapter 1 Introduction
+    /^(Chapter|Section|Part)\s+[\d.]+\s*.+?\n/i,
+  ];
+
+  let result = content;
+  for (const pattern of patterns) {
+    const match = result.match(pattern);
+    if (match) {
+      // Verify matched header contains expected section title or title is very short
+      if (match[0].includes(sectionTitle) || sectionTitle.length < 3) {
+        result = result.slice(match[0].length);
+        break;
+      }
+    }
+  }
+
+  return result.trim();
+}
+
+/**
  * Splits content into processable chunks based on document structure
  */
 export function splitContentByStructure(content: string, structure: DocumentStructure): ContentChunk[] {
@@ -74,10 +106,12 @@ export function splitContentByStructure(content: string, structure: DocumentStru
       sectionEnd = Math.min(sectionEnd, structure.acknowledgementsRange.start);
     }
 
+    const rawContent = content.slice(sec.startPos, sectionEnd).trim();
+    const cleanedContent = stripSectionHeaderFromContent(rawContent, sec.title);
     return {
       title: sec.title,
       level: sec.level,
-      content: content.slice(sec.startPos, sectionEnd).trim(),
+      content: cleanedContent,
     };
   });
 

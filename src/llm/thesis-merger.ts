@@ -141,6 +141,7 @@ function countNonEmptyFields(metadata: ThesisMetadata): number {
 
 /**
  * Deduplicate sections that may have been duplicated at chunk boundaries
+ * Also detects consecutive duplicate titles (same title + level back-to-back)
  */
 function deduplicateSections(sections: Section[]): Section[] {
   if (sections.length <= 1) {
@@ -149,17 +150,26 @@ function deduplicateSections(sections: Section[]): Section[] {
 
   const result: Section[] = [];
   const seenHashes = new Set<string>();
+  let lastTitle = '';
+  let lastLevel = 0;
 
   for (const section of sections) {
     // Create a hash from title and first 100 chars of content
     const contentPreview = section.content.slice(0, 100);
     const hash = `${section.title}|${section.level}|${contentPreview}`;
 
-    if (!seenHashes.has(hash)) {
+    // Check for consecutive duplicate titles (same title + level back-to-back)
+    const isConsecutiveDuplicate =
+      section.title === lastTitle &&
+      section.level === lastLevel;
+
+    if (!seenHashes.has(hash) && !isConsecutiveDuplicate) {
       seenHashes.add(hash);
       result.push(section);
+      lastTitle = section.title;
+      lastLevel = section.level;
     } else {
-      logger.debug(`Duplicate section removed: "${section.title}"`);
+      logger.debug(`Duplicate section removed: "${section.title}" (consecutive: ${isConsecutiveDuplicate})`);
     }
   }
 

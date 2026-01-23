@@ -487,44 +487,50 @@ export class ThesisController {
 
   /**
    * Download generated DOCX (converted from LaTeX via Pandoc)
+   * TEMPORARILY DISABLED - Pandoc conversion may corrupt formulas
    */
   @Get('jobs/:jobId/docx')
   async downloadDocx(@Param('jobId') jobId: string, @Req() req: Request, @Res() res: Response) {
-    const userId = this.extractUserId(req);
-    const job = await this.jobService.getJob(jobId, userId);
+    throw new BadRequestException(
+      'DOCX download is temporarily disabled. Please use PDF or TeX download instead.'
+    );
 
-    if (!job) {
-      throw new NotFoundException(`Job '${jobId}' not found`);
-    }
-
-    if (job.status !== JobStatus.COMPLETED) {
-      throw new BadRequestException(`Job is not completed. Status: ${job.status}`);
-    }
-
-    if (!job.result?.texPath || !fs.existsSync(job.result.texPath)) {
-      throw new NotFoundException('TeX file not found');
-    }
-
-    // Convert LaTeX to DOCX using Pandoc
-    const docxPath = job.result.texPath.replace('.tex', '.docx');
-    const { execSync } = require('child_process');
-
-    try {
-      execSync(`pandoc "${job.result.texPath}" -o "${docxPath}"`, {
-        timeout: 30000,
-      });
-    } catch (error) {
-      throw new BadRequestException('Failed to convert to DOCX');
-    }
-
-    const filename = `thesis_${jobId}.docx`;
-    res.set({
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'Content-Disposition': `attachment; filename="${filename}"`,
-    });
-
-    const fileStream = fs.createReadStream(docxPath);
-    fileStream.pipe(res);
+    // Original Pandoc conversion code - kept for reference when proper DOCX generation is implemented
+    // const userId = this.extractUserId(req);
+    // const job = await this.jobService.getJob(jobId, userId);
+    //
+    // if (!job) {
+    //   throw new NotFoundException(`Job '${jobId}' not found`);
+    // }
+    //
+    // if (job.status !== JobStatus.COMPLETED) {
+    //   throw new BadRequestException(`Job is not completed. Status: ${job.status}`);
+    // }
+    //
+    // if (!job.result?.texPath || !fs.existsSync(job.result.texPath)) {
+    //   throw new NotFoundException('TeX file not found');
+    // }
+    //
+    // // Convert LaTeX to DOCX using Pandoc
+    // const docxPath = job.result.texPath.replace('.tex', '.docx');
+    // const { execSync } = require('child_process');
+    //
+    // try {
+    //   execSync(`pandoc "${job.result.texPath}" -o "${docxPath}"`, {
+    //     timeout: 30000,
+    //   });
+    // } catch (error) {
+    //   throw new BadRequestException('Failed to convert to DOCX');
+    // }
+    //
+    // const filename = `thesis_${jobId}.docx`;
+    // res.set({
+    //   'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    //   'Content-Disposition': `attachment; filename="${filename}"`,
+    // });
+    //
+    // const fileStream = fs.createReadStream(docxPath);
+    // fileStream.pipe(res);
   }
 
   /**

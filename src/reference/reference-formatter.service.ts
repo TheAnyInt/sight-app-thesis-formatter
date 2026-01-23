@@ -52,8 +52,18 @@ export class ReferenceFormatterService {
       messages: [
         {
           role: 'system',
-          content:
-            '你是一个专业的参考文献解析助手。请将参考文献解析为结构化 JSON 格式。始终返回有效的 JSON 数组。',
+          content: `你是一个专业的参考文献解析助手，擅长处理各种格式的参考文献，包括：
+- 标准学术格式 (GB/T 7714, APA, MLA, Chicago 等)
+- 非标准/随意格式
+- 中英文混合格式
+
+你的核心能力：
+1. 识别文本中的每一条参考文献（通常按行、编号或段落分隔）
+2. 从每条参考文献中提取尽可能多的结构化信息
+3. 即使格式不标准或信息不完整，也要尽力解析
+4. 始终返回有效的 JSON
+
+重要：每一行或每一段通常代表一条独立的参考文献，请分别解析。`,
         },
         {
           role: 'user',
@@ -78,7 +88,23 @@ export class ReferenceFormatterService {
   private buildParsePrompt(rawText: string): string {
     return `请将以下参考文献文本解析为结构化 JSON。返回格式为 {"references": [...]}。
 
-每个参考文献对象包含以下字段：
+## 输入格式说明
+参考文献可能是以下任意格式：
+- 标准格式: "[1] 作者. 标题[J]. 期刊, 年, 卷(期): 页码."
+- 编号格式: "1. 作者, 标题, 期刊 2020"
+- 无编号格式: "作者, 标题, 出版信息"
+- URL格式: "https://example.com/resource"
+- 随意格式: "Smith et al., Some Paper Title, Journal 2020"
+- 混合格式: 以上格式的任意组合
+
+## 解析规则
+1. 每行或每个编号项通常是一条独立的参考文献，请分别解析
+2. 如果无法确定某字段，请省略该字段（不要猜测）
+3. 作者名可能是多种格式: "Smith, J." 或 "张三" 或 "Smith et al." 或 "Wang L, Li M"
+4. 年份可能出现在任意位置，如 "(2020)" 或 "2020年" 或末尾 "2020"
+5. 即使信息不完整，也要尽力提取已有信息
+
+## 输出字段
 - type: "journal" | "book" | "conference" | "thesis" | "website" | "standard" | "other"
 - authors: 作者数组（字符串数组）
 - title: 标题
@@ -96,9 +122,19 @@ export class ReferenceFormatterService {
 - institution: 学位授予单位（学位论文适用）
 - standardNumber: 标准编号（标准适用）
 
-请根据参考文献的内容判断类型，并提取相应字段。如果某字段无法确定，请省略该字段。
+## 示例输入
+Smith J, Wang L. Deep Learning for NLP. Nature 2020, 15(3): 100-110
+张三. 机器学习研究[D]. 北京大学, 2019
+https://pytorch.org/docs/
 
-参考文献文本：
+## 示例输出
+{"references": [
+  {"type": "journal", "authors": ["Smith J", "Wang L"], "title": "Deep Learning for NLP", "journal": "Nature", "year": "2020", "volume": "15", "issue": "3", "pages": "100-110"},
+  {"type": "thesis", "authors": ["张三"], "title": "机器学习研究", "institution": "北京大学", "year": "2019"},
+  {"type": "website", "title": "PyTorch Documentation", "url": "https://pytorch.org/docs/"}
+]}
+
+## 待解析文本
 ${rawText}`;
   }
 

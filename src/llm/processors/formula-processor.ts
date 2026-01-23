@@ -56,6 +56,14 @@ const UNICODE_TO_LATEX: Record<string, string> = {
 };
 
 /**
+ * Sets of Unicode math characters for pattern matching
+ */
+const UNICODE_UPPER_LIMITS = new Set(['𝑁', '𝑀', '𝐾', '𝑛', '𝑚', '𝑘', 'N', 'M', 'K', 'n', 'm', 'k']);
+const UNICODE_LHS_VARS = new Set(['𝐿', '𝑅', '𝐸', '𝐽', '𝑃', '𝑄', 'L', 'R', 'E', 'J', 'P', 'Q', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z']);
+const UNICODE_INDEX_VARS = new Set(['𝑖', '𝑗', '𝑘', 'i', 'j', 'k']);
+const SUM_PROD_SYMBOLS = new Set(['∑', '∏']);
+
+/**
  * Formula processing utilities for converting Unicode math to LaTeX
  */
 export class FormulaProcessor {
@@ -67,29 +75,37 @@ export class FormulaProcessor {
   }
 
   /**
+   * Convert Unicode characters to LaTeX in a string
+   */
+  private static convertUnicodeChars(text: string): string {
+    let result = text;
+    for (const [unicode, latex] of Object.entries(UNICODE_TO_LATEX)) {
+      result = result.split(unicode).join(latex);
+    }
+    return result;
+  }
+
+  /**
    * Convert a formula block to LaTeX
    * Handles patterns like "N ∑ L= − i=1 yilog(pi)"
    */
   private static convertFormulaBlockToLatex(content: string): string {
     // First convert all Unicode chars
-    let formula = content;
-    for (const [unicode, latex] of Object.entries(UNICODE_TO_LATEX)) {
-      formula = formula.split(unicode).join(latex);
-    }
+    let formula = this.convertUnicodeChars(content);
 
     // Try to detect and reconstruct common formula patterns
 
-    // Pattern 1: Sum formula "N ∑ L= − i=1 body"
-    // Matches: upper_limit sum_symbol lhs=- lower_limit body
-    const sumPattern = /([NMKnmk])\s*\\sum\s*([A-Za-z])\s*=\s*[-−]?\s*([ijk])=(\d+)\s*(.+)/;
+    // Pattern 1: Sum formula "N \sum L= − i=1 body" (space-joined format)
+    // More flexible pattern that handles various spacing
+    const sumPattern = /([NMKnmk])\s+\\sum\s+([A-Za-z])\s*=\s*[-−]?\s*([ijk])\s*=\s*(\d+)\s+(.+)/;
     const sumMatch = formula.match(sumPattern);
     if (sumMatch) {
       const [_, upper, lhs, idx, start, body] = sumMatch;
       return `$$${lhs} = -\\sum_{${idx}=${start}}^{${upper}} ${body}$$`;
     }
 
-    // Pattern 2: Product formula
-    const prodPattern = /([NMKnmk])\s*\\prod\s*([A-Za-z])\s*=\s*([ijk])=(\d+)\s*(.+)/;
+    // Pattern 2: Product formula (space-joined format)
+    const prodPattern = /([NMKnmk])\s+\\prod\s+([A-Za-z])\s*=\s*([ijk])\s*=\s*(\d+)\s+(.+)/;
     const prodMatch = formula.match(prodPattern);
     if (prodMatch) {
       const [_, upper, lhs, idx, start, body] = prodMatch;
@@ -101,7 +117,7 @@ export class FormulaProcessor {
       return `$$${formula}$$`;
     }
 
-    // If no pattern matched, wrap inline if it has LaTeX commands
+    // If no pattern matched, wrap in $$ if it has LaTeX commands
     if (/\\(?:sum|prod|int|frac|alpha|beta|gamma)/.test(formula)) {
       return `$$${formula}$$`;
     }
@@ -121,8 +137,12 @@ export class FormulaProcessor {
     let result = content;
 
     // Handle [FORMULA_BLOCK: ... :END_FORMULA_BLOCK] markers (multi-line formulas)
+    // These are already properly formatted, so protect them with a placeholder
+    const displayMathPlaceholders: string[] = [];
     result = result.replace(/\[FORMULA_BLOCK:\s*([\s\S]*?)\s*:END_FORMULA_BLOCK\]/g, (match, formulaContent) => {
-      return this.convertFormulaBlockToLatex(formulaContent);
+      const converted = this.convertFormulaBlockToLatex(formulaContent);
+      displayMathPlaceholders.push(converted);
+      return `<<<DISPLAY_MATH_${displayMathPlaceholders.length - 1}>>>`;
     });
 
     // Handle [FORMULA: ... :END_FORMULA] markers (single-line formulas)
@@ -165,8 +185,12 @@ export class FormulaProcessor {
     result = result.replace(/(?<!\$)([a-zA-Z])\^\{([^}]+)\}(?!\$)/g, '$$$1^{$2}$$');
 
     // Clean up adjacent inline math - merge $a$$b$ into $ab$
-    result = result.replace(/\$\$\$/g, '$ $');
-    result = result.replace(/\$\s*\$/g, '');
+    // Be careful not to corrupt display math $$...$$
+    // Only remove truly empty inline math like "$ $" or "$  $" (with spaces inside)
+    result = result.replace(/\$\s+\$/g, '');
+    // Remove $$ that appears between inline math expressions (like $a$$$b$ -> $a$$b$)
+    // But preserve $$ at start/end of display math
+    result = result.replace(/([^$])\$\$\$([^$])/g, '$1$ $$2');
 
     // Fix mixed math delimiters - remove $ inside \[...\] or $$...$$
     result = result.replace(/\\\[\s*\$([^$]+)\$\s*\\\]/g, '\\[$1\\]');
@@ -174,6 +198,23 @@ export class FormulaProcessor {
 
     // Fix \sum, \prod, etc. that have extra $ wrapping
     result = result.replace(/\$\\(sum|prod|int|frac|log)\$/g, '\\$1');
+
+    // Handle corrupted formula patterns like "\sum= −=1log()" that need math mode wrapping
+    // These occur when PDF extraction corrupts formula structure
+    result = result.replace(/(?<!\$)(\\(?:sum|prod|int)[^$\n]*(?:log|exp|sin|cos|tan)?\([^)]*\))(?!\$)/g, (match) => {
+      return `$${match}$`;
+    });
+
+    // Also wrap standalone \sum, \prod, \int with = that aren't in math mode
+    result = result.replace(/(?<!\$)(\\(?:sum|prod|int)=\s*[-−]?[^$\n]+)(?!\$)/g, (match) => {
+      return `$${match}$`;
+    });
+
+    // Restore display math placeholders
+    // Use a function as replacement to avoid $$ being interpreted as escape sequence
+    for (let i = 0; i < displayMathPlaceholders.length; i++) {
+      result = result.replace(`<<<DISPLAY_MATH_${i}>>>`, () => displayMathPlaceholders[i]);
+    }
 
     return result;
   }
@@ -185,42 +226,74 @@ export class FormulaProcessor {
   static reconstructFormulas(content: string): string {
     let result = content;
 
-    // Pattern 1: Sum formula split across lines
-    // 𝑁 (or N)
-    // ∑ (or ∏)
-    // 𝐿= − (or L= -)
-    // 𝑖=1 (or i=1)
-    // 𝑦𝑖log(𝑝𝑖)
-    // Using specific character matches instead of ranges
+    // Split content into lines for analysis
+    const lines = result.split('\n');
+    const reconstructed: string[] = [];
+    let i = 0;
 
-    // Match upper limit characters
-    const upperChars = '[𝑁𝑀𝐾𝑛𝑚𝑘NMKnmk]';
-    // Match LHS variable characters
-    const lhsChars = '[𝐿𝑅𝐸𝐽𝑃𝑄LREJPQa-z]';
-    // Match index characters
-    const indexChars = '[𝑖𝑗𝑘ijk]';
+    while (i < lines.length) {
+      const line = lines[i].trim();
 
-    const sumFormulaPattern = new RegExp(
-      `(${upperChars})\\s*\\n\\s*[∑∏]\\s*\\n\\s*(${lhsChars}=\\s*[-−]?)\\s*\\n\\s*(${indexChars}=\\d+)\\s*\\n\\s*([^\\n]+)`,
-      'g'
-    );
+      // Check if this line starts a potential formula pattern
+      // Pattern: upper_limit, sum/prod symbol, lhs=, index=num, body
+      if (UNICODE_UPPER_LIMITS.has(line) && i + 4 < lines.length) {
+        const line2 = lines[i + 1].trim();
+        const line3 = lines[i + 2].trim();
+        const line4 = lines[i + 3].trim();
+        const line5 = lines[i + 4].trim();
 
-    result = result.replace(sumFormulaPattern, (match, upper, lhs, lower, body) => {
-      // Convert to proper LaTeX using the mapping
-      let upperClean = upper;
-      let lhsClean = lhs;
-      let lowerClean = lower;
+        // Check if line2 is sum or product symbol
+        if (SUM_PROD_SYMBOLS.has(line2)) {
+          // Check if line3 looks like "L= −" or "L=" (use 'u' flag for Unicode)
+          const lhsMatch = line3.match(/^(.)=\s*([-−]?)\s*$/u);
+          // Check if line4 looks like "i=1" (use 'u' flag for Unicode)
+          const indexMatch = line4.match(/^(.)=(\d+)$/u);
 
-      // Apply Unicode to LaTeX conversions
-      for (const [unicode, latex] of Object.entries(UNICODE_TO_LATEX)) {
-        upperClean = upperClean.split(unicode).join(latex);
-        lhsClean = lhsClean.split(unicode).join(latex);
-        lowerClean = lowerClean.split(unicode).join(latex);
+          if (lhsMatch && indexMatch) {
+            // We found a formula pattern!
+            const upper = this.convertUnicodeChars(line);
+            const operator = line2 === '∑' ? '\\sum' : '\\prod';
+            const lhs = this.convertUnicodeChars(lhsMatch[1]);
+            const hasMinus = lhsMatch[2] === '−' || lhsMatch[2] === '-';
+            const idx = this.convertUnicodeChars(indexMatch[1]);
+            const start = indexMatch[2];
+            const body = this.convertUnicodeChars(line5);
+
+            const sign = hasMinus ? '-' : '';
+            reconstructed.push(`$$${lhs} = ${sign}${operator}_{${idx}=${start}}^{${upper}} ${body}$$`);
+            i += 5;
+            continue;
+          }
+        }
       }
 
-      return `$$${lhsClean}\\sum_{${lowerClean}}^{${upperClean}} ${body}$$`;
-    });
+      // Also check for ASCII variants
+      if (['N', 'M', 'K', 'n', 'm', 'k'].includes(line) && i + 4 < lines.length) {
+        const line2 = lines[i + 1].trim();
+        const line3 = lines[i + 2].trim();
+        const line4 = lines[i + 3].trim();
+        const line5 = lines[i + 4].trim();
 
-    return result;
+        if (line2 === '∑' || line2 === '∏') {
+          const lhsMatch = line3.match(/^([A-Za-z])=\s*([-−]?)\s*$/);
+          const indexMatch = line4.match(/^([ijk])=(\d+)$/);
+
+          if (lhsMatch && indexMatch) {
+            const operator = line2 === '∑' ? '\\sum' : '\\prod';
+            const hasMinus = lhsMatch[2] === '−' || lhsMatch[2] === '-';
+            const sign = hasMinus ? '-' : '';
+            reconstructed.push(`$$${lhsMatch[1]} = ${sign}${operator}_{${indexMatch[1]}=${indexMatch[2]}}^{${line}} ${line5}$$`);
+            i += 5;
+            continue;
+          }
+        }
+      }
+
+      // No formula pattern found, keep the line as is
+      reconstructed.push(lines[i]);
+      i++;
+    }
+
+    return reconstructed.join('\n');
   }
 }
