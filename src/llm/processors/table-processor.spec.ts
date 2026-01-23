@@ -92,7 +92,8 @@ describe('TableProcessor', () => {
 [/TABLE]`;
       const result = TableProcessor.convertTableCellsToLatex(input);
       expect(result).toContain('模型 & Accuracy & F1 & 参数量');
-      expect(result).toContain('ResNet & 95.2% & 94.8 & 25M');
+      // Note: % is escaped to \% for LaTeX compatibility
+      expect(result).toContain('ResNet & 95.2\\% & 94.8 & 25M');
       expect(result).toContain('{|c|c|c|c|}');
     });
 
@@ -296,7 +297,8 @@ describe('TableProcessor', () => {
 [TABLE_END]`;
       const result = TableProcessor.convertTableCellsToLatex(input);
       expect(result).toContain('Dataset & Accuracy');
-      expect(result).toContain('CIFAR-10 & 95.2%');
+      // Note: % is escaped to \% for LaTeX compatibility
+      expect(result).toContain('CIFAR-10 & 95.2\\%');
     });
 
     it('should handle row markers with multiple rows', () => {

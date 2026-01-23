@@ -17,6 +17,25 @@ export class TableProcessor {
   }
 
   /**
+   * Escape special LaTeX characters in table cell content
+   * Note: Does NOT escape & as that's the column separator
+   */
+  private static escapeTableCell(cell: string): string {
+    if (!cell) return '';
+    return cell
+      .replace(/\\/g, '\\textbackslash{}')
+      .replace(/%/g, '\\%')
+      .replace(/\$/g, '\\$')
+      .replace(/#/g, '\\#')
+      .replace(/_/g, '\\_')
+      .replace(/\{/g, '\\{')
+      .replace(/\}/g, '\\}')
+      .replace(/&/g, '\\&')  // Escape & in cell content
+      .replace(/\^/g, '\\textasciicircum{}')
+      .replace(/~/g, '\\textasciitilde{}');
+  }
+
+  /**
    * Generate a caption from header row content
    * Creates a meaningful caption for List of Tables
    */
@@ -49,15 +68,17 @@ export class TableProcessor {
     latex += `\\label{${label}}\n`;
     latex += `\\begin{tabular}{${colSpec}}\n\\hline\n`;
 
-    // Header row
-    latex += rows[0].join(' & ') + ' \\\\\\\\ \\hline\n';
+    // Header row - escape special characters in each cell
+    const escapedHeader = rows[0].map(cell => this.escapeTableCell(cell));
+    latex += escapedHeader.join(' & ') + ' \\\\\\\\ \\hline\n';
 
-    // Data rows
+    // Data rows - escape special characters in each cell
     for (let i = 1; i < rows.length; i++) {
       const row = [...rows[i]];
       // Ensure row has correct number of columns
       while (row.length < numCols) row.push('');
-      latex += row.slice(0, numCols).join(' & ') + ' \\\\\\\\ \\hline\n';
+      const escapedRow = row.slice(0, numCols).map(cell => this.escapeTableCell(cell));
+      latex += escapedRow.join(' & ') + ' \\\\\\\\ \\hline\n';
     }
 
     latex += '\\end{tabular}\n\\end{table}';
@@ -323,6 +344,54 @@ export class TableProcessor {
       }
     });
 
+    return content;
+  }
+
+  /**
+   * Clean up any remaining unconverted table markers
+   * This prevents raw markers from causing LaTeX errors
+   */
+  static cleanupUnconvertedMarkers(content: string): string {
+    // Remove any remaining TABLE_START/TABLE_END markers
+    content = content.replace(/\[TABLE_START\][\s\S]*?\[TABLE_END\]/g, (match) => {
+      logger.warn('Removing unconverted table markers');
+      // Extract cell contents as plain text fallback
+      const cells: string[] = [];
+      const cellRegex = /\[TABLE_CELL:\s*([^\]]*)\]/g;
+      let cellMatch;
+      while ((cellMatch = cellRegex.exec(match)) !== null) {
+        cells.push(cellMatch[1].trim());
+      }
+      if (cells.length > 0) {
+        // Return as simple list if we can't make a table
+        return cells.join(', ');
+      }
+      return '';
+    });
+
+    // Remove any remaining individual markers
+    content = content.replace(/\[TABLE_(?:START|END|ROW:\d+|CELL:[^\]]*)\]/g, '');
+
+    // Remove any remaining structured table markers that weren't converted
+    content = content.replace(/\[TABLE cols=\d+\][\s\S]*?\[\/TABLE\]/g, (match) => {
+      logger.warn('Removing unconverted structured table');
+      return '';
+    });
+    content = content.replace(/\[(HEADER|ROW|\/HEADER|\/ROW|\/TABLE)\]/g, '');
+
+    return content;
+  }
+
+  /**
+   * Full table processing pipeline
+   */
+  static process(content: string): string {
+    // First convert markdown tables
+    content = this.convertMarkdownTablesToLatex(content);
+    // Then convert TABLE_CELL format
+    content = this.convertTableCellsToLatex(content);
+    // Finally clean up any unconverted markers
+    content = this.cleanupUnconvertedMarkers(content);
     return content;
   }
 }

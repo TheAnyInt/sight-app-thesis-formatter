@@ -45,15 +45,18 @@
 }
 
 %% ==================== 字体设置 ====================
-% 设置英文字体为 Times New Roman
-\setmainfont{Times New Roman}
-\setsansfont{Arial}
-\setmonofont{Courier New}
+% 使用bundled字体文件，确保跨平台兼容性
+% 字体文件位于 templates/shared/ 目录
 
-% 中文字体
-\setCJKmainfont{SimSun}[AutoFakeBold=2.5, AutoFakeSlant=0.2]
-\setCJKsansfont{SimHei}[AutoFakeBold=2.5]
-\setCJKmonofont{FangSong}
+% 英文字体 - 使用TeX Gyre Termes (Times New Roman的开源替代)
+\setmainfont{TeX Gyre Termes}
+\setsansfont{TeX Gyre Heros}
+\setmonofont{TeX Gyre Cursor}
+
+% 中文字体 - 使用bundled字体文件
+\setCJKmainfont{../shared/simsun.ttc}[AutoFakeBold=2.5, AutoFakeSlant=0.2]
+\setCJKsansfont{../shared/simhei.ttf}[AutoFakeBold=2.5]
+\setCJKmonofont{../shared/simsun.ttc}
 
 % 定义字号命令
 \newcommand{\chuhao}{\fontsize{42pt}{50.4pt}\selectfont}

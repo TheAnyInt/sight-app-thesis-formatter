@@ -90,15 +90,17 @@
 %\@ifpackagelater {xeCJK}  { 2008/12/29 }
 \RequirePackage{CJKnumb} % used in recent TEX distribution
 %\punctstyle{kaiming}
-\setmainfont[Mapping=tex-text]{Times New Roman}         %\rmfamily 使用的字体,默认英文和数字的字体。
+% 英文字体 - 使用TeX Gyre Termes (Times New Roman的开源替代)
+\setmainfont[Mapping=tex-text]{TeX Gyre Termes}         %\rmfamily 使用的字体,默认英文和数字的字体。
 \XeTeXlinebreaklocale "zh"                              %采用中文断行方式
 \XeTeXlinebreakskip = 0pt plus 1pt                      %字元间可加入0pt~1pt的弹性间距，这样才能排出左右对齐的段落。
 
-\setCJKmainfont{simsun.ttc}
-\setCJKfamilyfont{song}{simsun.ttc}
-\setCJKfamilyfont{hei}{simhei.ttf}
-\setCJKfamilyfont{kai}{simsun.ttc}
-\setCJKfamilyfont{fang}{simsun.ttc}
+% 中文字体 - 使用bundled字体文件 (templates/shared/)
+\setCJKmainfont{../shared/simsun.ttc}
+\setCJKfamilyfont{song}{../shared/simsun.ttc}
+\setCJKfamilyfont{hei}{../shared/simhei.ttf}
+\setCJKfamilyfont{kai}{../shared/simsun.ttc}
+\setCJKfamilyfont{fang}{../shared/simsun.ttc}
 
 % 定义字体
 \newcommand{\songti}{\CJKfamily{song}}
