@@ -63,6 +63,7 @@ export class LatexService {
    * Prepare document data for Mustache rendering
    * Escapes LaTeX special characters in text fields
    * Adds level flags (isLevel1, isLevel2, isLevel3) for sections
+   * Flattens metadata and converts references to array format
    */
   prepareDocumentData(document: Record<string, any>): Record<string, any> {
     const prepared: Record<string, any> = {};
@@ -104,6 +105,7 @@ export class LatexService {
               preparedItem.isLevel1 = item.level === 1;
               preparedItem.isLevel2 = item.level === 2;
               preparedItem.isLevel3 = item.level === 3;
+              preparedItem.isLevel4 = item.level === 4;
             }
             return preparedItem;
           }
@@ -116,7 +118,104 @@ export class LatexService {
       }
     }
 
+    // Flatten metadata to top-level with template-friendly field names
+    if (document.metadata) {
+      const meta = document.metadata;
+      // Direct mappings (escaped)
+      if (meta.title) prepared.title = this.escapeLatex(meta.title);
+      if (meta.title_en) prepared.titleEn = this.escapeLatex(meta.title_en);
+      if (meta.author_name) prepared.author = this.escapeLatex(meta.author_name);
+      if (meta.student_id) prepared.studentId = this.escapeLatex(meta.student_id);
+      if (meta.school) prepared.college = this.escapeLatex(meta.school);
+      if (meta.major) prepared.major = this.escapeLatex(meta.major);
+      if (meta.supervisor) prepared.advisor = this.escapeLatex(meta.supervisor);
+      if (meta.date) prepared.date = this.escapeLatex(meta.date);
+      // Also keep original names for templates that use them
+      if (meta.author_name) prepared.author_name = this.escapeLatex(meta.author_name);
+      if (meta.title_en) prepared.title_en = this.escapeLatex(meta.title_en);
+    }
+
+    // Add Chinese/English abstract aliases
+    if (document.abstract) {
+      prepared.abstractCn = document.abstract;
+    }
+    if (document.abstract_en) {
+      prepared.abstractEn = document.abstract_en;
+    }
+    if (document.keywords) {
+      prepared.keywordsCn = this.escapeLatex(document.keywords);
+    }
+    if (document.keywords_en) {
+      prepared.keywordsEn = this.escapeLatex(document.keywords_en);
+    }
+
+    // Convert references string to array format for templates
+    if (document.references && typeof document.references === 'string') {
+      const refsArray = this.parseReferencesToArray(document.references);
+      if (refsArray.length > 0) {
+        prepared.references = refsArray;
+        prepared.hasReferences = true;
+      }
+    }
+
+    // Add has* boolean flags for conditional rendering
+    prepared.hasConclusion = !!document.conclusion;
+    prepared.hasAcknowledgements = !!document.acknowledgements;
+    prepared.hasAppendix = !!document.appendix;
+
+    // Copy chapters as alias for sections (some templates use chapters)
+    if (document.sections && !document.chapters) {
+      prepared.chapters = prepared.sections;
+    }
+
     return prepared;
+  }
+
+  /**
+   * Parse references string into array format for LaTeX thebibliography
+   * Handles formats like "[1] Author..." or "1. Author..."
+   */
+  private parseReferencesToArray(refsString: string): Array<{ key: string; citation: string }> {
+    const refs: Array<{ key: string; citation: string }> = [];
+
+    // Split by common reference patterns
+    const lines = refsString.split(/\n/);
+    let currentRef = '';
+    let refIndex = 0;
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      // Check if line starts a new reference
+      const newRefMatch = trimmed.match(/^\[(\d+)\]|^(\d+)\.\s|^(\d+)\)\s/);
+      if (newRefMatch) {
+        // Save previous reference
+        if (currentRef) {
+          refIndex++;
+          refs.push({
+            key: `ref${refIndex}`,
+            citation: currentRef.trim(),
+          });
+        }
+        // Start new reference (remove the number prefix)
+        currentRef = trimmed.replace(/^\[?\d+[\].)]\s*/, '');
+      } else {
+        // Continue previous reference
+        currentRef += ' ' + trimmed;
+      }
+    }
+
+    // Save last reference
+    if (currentRef) {
+      refIndex++;
+      refs.push({
+        key: `ref${refIndex}`,
+        citation: currentRef.trim(),
+      });
+    }
+
+    return refs;
   }
 
   /**
