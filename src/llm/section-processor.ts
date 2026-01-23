@@ -127,6 +127,35 @@ ${contextInfo}
    - 编号会由 LaTeX 模板自动生成
 4. 如果某个字段在内容中不存在，返回空字符串 "" 或空数组 []
 5. 保持学术语言的严谨性
+
+**公式处理（极重要）：**
+- PDF提取的公式可能被分成多行或多个片段，包含Unicode数学符号
+- [FORMULA: ... :END_FORMULA] 标记表示公式片段，可能需要**合并相邻片段**
+- 常见模式（需要识别并转换）：
+  - 分散的求和公式如 "𝑁\\n∑\\n𝐿= −\\n𝑖=1\\n𝑦𝑖log(𝑝𝑖)" → $$L = -\\sum_{i=1}^{N} y_i \\log(p_i)$$
+  - 带说明的公式如 "其中，𝑦𝑖为真实标签" → 其中，$y_i$为真实标签
+- **必须将所有公式转换为标准LaTeX格式**：
+  - 独立公式用 $$...$$，行内公式用 $...$
+- 常见转换：𝛼→\\alpha, 𝛽→\\beta, ∑→\\sum, ∏→\\prod, ∫→\\int, √→\\sqrt, ≤→\\leq, ≥→\\geq, 𝑥ᵢ→x_i, 𝑥²→x^2
+
+**表格处理（极重要）：**
+- PDF提取的表格可能每个单元格变成单独的一行
+- 识别模式：连续的短行（如 "数据集\\n类别数\\n训练集\\nCIFAR-10\\n10\\n50,000"）
+- **Markdown表格必须转换**：如果看到 | col1 | col2 | 这样的管道符分隔格式，必须转换为LaTeX
+- **必须将所有表格转换为LaTeX tabular格式**：
+\\begin{table}[H]
+\\centering
+\\caption{根据上下文推断的表格标题}
+\\begin{tabular}{|c|c|c|c|}
+\\hline
+列1 & 列2 & 列3 & 列4 \\\\\\\\
+\\hline
+数据1 & 数据2 & 数据3 & 数据4 \\\\\\\\
+\\hline
+\\end{tabular}
+\\end{table}
+- **禁止输出 Markdown 格式的表格**（如 | A | B | 或 |---|---| 分隔线），必须用 LaTeX tabular
+- 首先识别有多少列（根据重复模式），然后将数据组织成表格
 ${figureInstructions}
 内容片段：
 ${contentToProcess}`;
@@ -159,9 +188,11 @@ export function parseChunkResponse(responseText: string, chunkIndex: number): Pa
     result.sections = [];
     for (const sec of parsed.sections) {
       if (sec.title || sec.content) {
+        // Post-process content to convert any remaining markdown tables
+        const processedContent = postProcessSectionContent(sec.content?.trim() || '');
         result.sections.push({
           title: sec.title?.trim() || '',
-          content: sec.content?.trim() || '',
+          content: processedContent,
           level: [1, 2, 3].includes(sec.level) ? sec.level : 1,
         });
       }
@@ -188,6 +219,66 @@ export function parseChunkResponse(responseText: string, chunkIndex: number): Pa
     result.acknowledgements = parsed.acknowledgements.trim();
   }
 
+  return result;
+}
+
+/**
+ * Convert markdown tables to LaTeX tabular format
+ * This is a fallback in case the LLM doesn't convert them
+ */
+export function convertMarkdownTablesToLatex(content: string): string {
+  // Match markdown table pattern: | col1 | col2 | ... followed by |---|---| separator
+  const tableRegex = /(\|[^\n]+\|\n)(\|[-:\s|]+\|\n)((?:\|[^\n]+\|\n?)+)/g;
+
+  return content.replace(tableRegex, (match, headerRow, separatorRow, bodyRows) => {
+    try {
+      // Parse header
+      const headers = headerRow.split('|').filter((h: string) => h.trim()).map((h: string) => h.trim());
+      const numCols = headers.length;
+
+      if (numCols === 0) return match;
+
+      // Parse body rows
+      const rows: string[][] = [];
+      const bodyLines = bodyRows.trim().split('\n');
+      for (const line of bodyLines) {
+        const cells = line.split('|').filter((c: string) => c.trim() !== '' || c === '').slice(0, -1);
+        // Skip empty lines
+        if (cells.length > 0 && cells.some((c: string) => c.trim())) {
+          // Pad or trim to match header columns
+          const row = cells.slice(cells[0] === '' ? 1 : 0).map((c: string) => c.trim());
+          if (row.length > 0) {
+            rows.push(row);
+          }
+        }
+      }
+
+      // Build LaTeX table
+      const colSpec = '|' + 'c|'.repeat(numCols);
+      let latex = '\\begin{table}[H]\n\\centering\n';
+      latex += `\\begin{tabular}{${colSpec}}\n\\hline\n`;
+      latex += headers.join(' & ') + ' \\\\\\\\ \\hline\n';
+      for (const row of rows) {
+        // Ensure row has correct number of columns
+        while (row.length < numCols) row.push('');
+        latex += row.slice(0, numCols).join(' & ') + ' \\\\\\\\ \\hline\n';
+      }
+      latex += '\\end{tabular}\n\\end{table}';
+
+      return latex;
+    } catch (e) {
+      logger.warn(`Failed to convert markdown table: ${e}`);
+      return match;
+    }
+  });
+}
+
+/**
+ * Post-process section content to fix common issues
+ */
+export function postProcessSectionContent(content: string): string {
+  // Convert any remaining markdown tables to LaTeX
+  let result = convertMarkdownTablesToLatex(content);
   return result;
 }
 

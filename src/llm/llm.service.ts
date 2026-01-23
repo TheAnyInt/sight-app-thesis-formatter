@@ -15,6 +15,7 @@ import {
   ChunkProcessingResult,
   buildChunkPrompt,
   parseChunkResponse,
+  postProcessSectionContent,
   delay,
   RETRY_CONFIG,
   calculateRetryDelay,
@@ -388,9 +389,11 @@ ${truncatedContent}`;
     if (Array.isArray(data.sections)) {
       for (const sec of data.sections) {
         if (sec.title || sec.content) {
+          // Post-process content to convert any remaining markdown tables
+          const processedContent = postProcessSectionContent(sec.content?.trim() || '');
           sections.push({
             title: sec.title?.trim() || '',
-            content: sec.content?.trim() || '',
+            content: processedContent,
             level: [1, 2, 3].includes(sec.level) ? sec.level : 1,
           });
         }

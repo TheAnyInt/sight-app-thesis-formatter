@@ -7,7 +7,97 @@ Extracts text with image position markers for LLM processing
 import sys
 import json
 import os
+import re
 import fitz  # PyMuPDF
+
+# Unicode math symbols that indicate potential formulas
+UNICODE_MATH_CHARS = set('𝛼𝛽𝛾𝛿𝜀𝜁𝜂𝜃𝜄𝜅𝜆𝜇𝜈𝜉𝜊𝜋𝜌𝜎𝜏𝜐𝜑𝜒𝜓𝜔'
+                         '𝛢𝛣𝛤𝛥𝛦𝛧𝛨𝛩𝛪𝛫𝛬𝛭𝛮𝛯𝛰𝛱𝛲𝛳𝛴𝛵𝛶𝛷𝛸𝛹𝛺'
+                         '𝑎𝑏𝑐𝑑𝑒𝑓𝑔ℎ𝑖𝑗𝑘𝑙𝑚𝑛𝑜𝑝𝑞𝑟𝑠𝑡𝑢𝑣𝑤𝑥𝑦𝑧'
+                         '𝐴𝐵𝐶𝐷𝐸𝐹𝐺𝐻𝐼𝐽𝐾𝐿𝑀𝑁𝑂𝑃𝑄𝑅𝑆𝑇𝑈𝑉𝑊𝑋𝑌𝑍'
+                         '⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿⁱ₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎'
+                         '∑∏∫∬∭∮∯∰∇∂∆∀∃∈∉⊂⊃⊆⊇∪∩∧∨¬⊕⊗⊙'
+                         '≤≥≠≈≡≢∝∞±×÷√∛∜')
+
+def mark_formulas(text: str) -> str:
+    """
+    Detect and mark potential formulas containing Unicode math symbols.
+    This helps the LLM identify formulas that need conversion to LaTeX.
+    """
+    lines = text.split('\n')
+    result = []
+
+    for line in lines:
+        # Count Unicode math characters in this line
+        math_count = sum(1 for c in line if c in UNICODE_MATH_CHARS)
+
+        # If line contains significant Unicode math, mark it as a formula
+        if math_count >= 3 or (math_count >= 1 and any(c in line for c in '∑∏∫∂∇')):
+            # Find the formula portion (continuous text with math symbols)
+            # Look for sequences containing math symbols
+            marked_line = line
+            # Simple heuristic: if we have math symbols, wrap the whole content
+            # The LLM will clean this up
+            if not line.strip().startswith('[FORMULA:'):
+                marked_line = f'[FORMULA: {line.strip()} :END_FORMULA]'
+            result.append(marked_line)
+        else:
+            result.append(line)
+
+    return '\n'.join(result)
+
+
+def detect_table_structure(text: str) -> str:
+    """
+    Detect potential table data based on patterns:
+    - Multiple numbers/values separated by spaces on a line
+    - Lines with consistent columnar structure
+    """
+    lines = text.split('\n')
+    result = []
+    table_buffer = []
+    in_potential_table = False
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+
+        # Check if this looks like a table row
+        # Pattern: multiple words/numbers with spacing that could be columns
+        parts = stripped.split()
+
+        # Heuristic: 3+ columns of data, with at least one numeric value
+        has_numbers = any(re.match(r'^[\d,.]+$', p) for p in parts)
+        looks_like_table_row = len(parts) >= 3 and has_numbers
+
+        if looks_like_table_row:
+            if not in_potential_table:
+                in_potential_table = True
+            table_buffer.append(stripped)
+        else:
+            if in_potential_table and len(table_buffer) >= 2:
+                # Mark the buffered content as a table
+                result.append('[TABLE_START]')
+                for row in table_buffer:
+                    result.append(f'[TABLE_ROW: {row}]')
+                result.append('[TABLE_END]')
+                table_buffer = []
+            elif table_buffer:
+                # Not enough rows to be a table, just output normally
+                result.extend(table_buffer)
+                table_buffer = []
+            in_potential_table = False
+            result.append(line)
+
+    # Handle remaining buffer
+    if len(table_buffer) >= 2:
+        result.append('[TABLE_START]')
+        for row in table_buffer:
+            result.append(f'[TABLE_ROW: {row}]')
+        result.append('[TABLE_END]')
+    elif table_buffer:
+        result.extend(table_buffer)
+
+    return '\n'.join(result)
 
 
 def extract_pdf_with_layout(pdf_path: str, output_dir: str) -> dict:
@@ -109,6 +199,11 @@ def extract_pdf_with_layout(pdf_path: str, output_dir: str) -> dict:
             result["text_with_images"] += "\n\n"
 
     doc.close()
+
+    # Post-process to mark formulas and tables
+    result["text_with_images"] = mark_formulas(result["text_with_images"])
+    result["text_with_images"] = detect_table_structure(result["text_with_images"])
+
     return result
 
 
