@@ -25,7 +25,7 @@ export const hunnuTemplate = {
     'kaiti_GB2312.TTF',
     'simsun.ttc',
     'simhei.ttf',
-    'simfang.ttf',
+    // simfang.ttf 不需要 - 使用 tectonic 内置的 FandolFang
   ],
   texContent: `% !TEX TS-program = xelatex
 % !TEX encoding = UTF-8
@@ -33,10 +33,13 @@ export const hunnuTemplate = {
 %% 湖南师范大学树达学院本科毕业论文 LaTeX 模板
 %% HUNNU Bachelor Thesis Template - Standalone version with embedded fonts
 %%
-\\documentclass[a4paper,twoside,openright,zihao=-4]{ctexbook}
+\\documentclass[a4paper,twoside,openright,zihao=-4,fontset=none]{ctexbook}
 
 %% ==================== 字体设置 ====================
-% 设置中文字体 - 使用本地字体文件 (ctexbook 已内置 xeCJK)
+% fontset=none 表示不使用 ctex 内置字体配置，需要手动设置所有字体
+\\usepackage{fontspec}
+
+% 设置中文字体 - 使用本地字体文件
 \\setCJKmainfont{simsun.ttc}[AutoFakeBold=2.5, AutoFakeSlant=0.2]
 \\setCJKsansfont{simhei.ttf}[AutoFakeBold=2.5]
 \\setCJKmonofont{simhei.ttf}
@@ -44,7 +47,7 @@ export const hunnuTemplate = {
 % 定义字体族
 \\setCJKfamilyfont{zhsong}{simsun.ttc}[AutoFakeBold=2.5]
 \\setCJKfamilyfont{zhhei}{simhei.ttf}[AutoFakeBold=2.5]
-\\setCJKfamilyfont{zhfs}{simfang.ttf}[AutoFakeBold=2.5]
+\\setCJKfamilyfont{zhfs}{FandolFang-Regular.otf}[AutoFakeBold=2.5]
 \\setCJKfamilyfont{zhkai}{kaiti_GB2312.TTF}[AutoFakeBold=2.5]
 
 \\newcommand{\\songti}{\\CJKfamily{zhsong}}
@@ -52,10 +55,18 @@ export const hunnuTemplate = {
 \\newcommand{\\fangsong}{\\CJKfamily{zhfs}}
 \\newcommand{\\kaiti}{\\CJKfamily{zhkai}}
 
-% 英文字体
-\\setmainfont{Times New Roman}[AutoFakeBold=2.5, AutoFakeSlant=0.2]
-\\setsansfont{DejaVu Sans}
-\\setmonofont{DejaVu Sans Mono}
+% 英文字体 - 使用 TeX Gyre 系列 (TeX 内置，跨平台兼容)
+\\setmainfont{texgyretermes-regular.otf}[
+  BoldFont=texgyretermes-bold.otf,
+  ItalicFont=texgyretermes-italic.otf,
+  BoldItalicFont=texgyretermes-bolditalic.otf
+]
+\\setsansfont{texgyreheros-regular.otf}[
+  BoldFont=texgyreheros-bold.otf
+]
+\\setmonofont{texgyrecursor-regular.otf}[
+  BoldFont=texgyrecursor-bold.otf
+]
 
 %% ==================== 页面设置 ====================
 \\usepackage[top=2.54cm, bottom=2.54cm, outer=2.54cm, inner=2.27cm, headheight=1.5cm, footskip=1.75cm, heightrounded]{geometry}
@@ -64,9 +75,9 @@ export const hunnuTemplate = {
 \\usepackage[numbers,sort&compress]{natbib}
 \\usepackage[perpage, bottom]{footmisc}
 \\usepackage{amsmath,amsfonts,amssymb}
-\\usepackage{amsthm}
+% 注意：不加载 amsthm，使用 ntheorem 代替以避免 \\proof 冲突
 \\usepackage{graphicx}
-\\usepackage{subfigure}
+\\usepackage{subfig}
 \\usepackage{setspace}
 \\usepackage{float}
 \\usepackage{booktabs}
@@ -76,13 +87,14 @@ export const hunnuTemplate = {
 \\usepackage{multirow}
 \\usepackage{fancyhdr}
 \\usepackage{etoolbox}
-\\usepackage[titles,subfigure]{tocloft}
+\\usepackage[subfigure]{tocloft}
 \\usepackage{array}
 \\usepackage{makecell}
 \\usepackage{forloop}
 \\usepackage{xstring}
 \\usepackage[unicode,psdextra]{hyperref}
 \\usepackage[nameinlink]{cleveref}
+\\usepackage{bookmark}
 \\usepackage{enumitem}
 \\usepackage[amsmath,thmmarks,hyperref]{ntheorem}
 \\usepackage{algorithm}
@@ -106,7 +118,7 @@ export const hunnuTemplate = {
 \\newcommand{\\qihao}{\\fontsize{5.25pt}{\\baselineskip}\\selectfont}
 
 %% ==================== 参考文献上标 ====================
-\\newcommand{\\upcite}[1]{{\\setcitestyle{square,super}\\cite{#1}}}
+\\newcommand{\\upcite}[1]{\\begingroup\\setcitestyle{square,super}\\cite{#1}\\endgroup}
 
 %% ==================== 页眉页脚设置 ====================
 \\newboolean{PicAndTabIndex}
@@ -185,14 +197,25 @@ export const hunnuTemplate = {
 %% ==================== 超链接设置 ====================
 \\hypersetup{hidelinks,breaklinks=true,bookmarksopen=false}
 
+% PDF 元数据设置
+\\makeatletter
+\\AtBeginDocument{
+  \\hypersetup{
+    pdftitle={\\@HUNNUtitle},
+    pdfauthor={\\@HUNNUauthor},
+    pdfsubject={湖南师范大学本科毕业论文}
+  }
+}
+\\makeatother
+
 %% ==================== 列表样式 ====================
 \\setenumerate[1]{itemsep=0pt,partopsep=0pt,parsep=\\parskip,topsep=5pt}
 \\setitemize[1]{itemsep=0pt,partopsep=0pt,parsep=\\parskip,topsep=0pt}
 \\setdescription{itemsep=0pt,partopsep=0pt,parsep=\\parskip,topsep=5pt}
 
 %% ==================== 定理环境 ====================
-\\theorembodyfont{\\rmfamily\\songti}
-\\theoremheaderfont{\\rmfamily\\heiti}
+\\theorembodyfont{\\songti}
+\\theoremheaderfont{\\heiti}
 \\theoremsymbol{\\ensuremath{\\square}}
 \\newtheorem*{proof}{证明}
 \\theoremstyle{plain}
@@ -216,7 +239,7 @@ export const hunnuTemplate = {
 \\crefname{axiom}{公理}{公理}
 \\crefname{corollary}{推论}{推论}
 \\crefname{example}{例}{例}
-\\crefname{remark}{注释}{注释}
+% remark 环境未定义，移除其 crefname
 \\crefname{conjecture}{猜想}{猜想}
 
 %% ==================== 算法环境 ====================
@@ -239,7 +262,7 @@ export const hunnuTemplate = {
 \\newcommand\\HUNNUspace{\\phantom{永}}
 
 %% ==================== 图片路径 ====================
-\\graphicspath{{figures/}}
+\\graphicspath{ {figures/} }
 \\setboolean{PicAndTabIndex}{false}
 
 %% ==================== 中文摘要命令 ====================
