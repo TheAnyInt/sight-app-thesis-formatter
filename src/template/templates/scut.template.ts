@@ -50,7 +50,7 @@ export const scutTemplate = {
 \\usepackage{amstext}
 \\usepackage{pifont}
 \\usepackage{algorithmic}
-\\usepackage[colorlinks=true]{hyperref}
+\\usepackage[colorlinks=true,plainpages=false,pdfpagelabels]{hyperref}
 \\usepackage{bookmark}
 \\usepackage{float}
 \\usepackage{caption}

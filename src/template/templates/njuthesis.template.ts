@@ -108,6 +108,9 @@ export const njuthesisTemplate = {
 % \\usepackage{subcaption}
 % \\usepackage{siunitx}
 
+% Hyperref options for TOC page numbers and PDF labels
+\\hypersetup{plainpages=false,pdfpagelabels}
+
 \\begin{document}
 
 %---------------------------------------------------------------------

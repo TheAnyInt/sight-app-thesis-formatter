@@ -86,7 +86,7 @@ export const njulife2Template = {
 \\pagestyle{fancy}
 
 \\usepackage{hyperref}
-\\hypersetup{colorlinks, bookmarks, unicode}
+\\hypersetup{colorlinks, bookmarks, unicode, plainpages=false, pdfpagelabels}
 \\hypersetup{colorlinks=true,linkcolor=black,citecolor=black}
 \\setcounter{tocdepth}{3}
 

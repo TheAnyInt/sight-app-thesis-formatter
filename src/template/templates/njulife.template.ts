@@ -144,7 +144,7 @@ export const njulifeTemplate = {
 
 \\titlecontents{chapter}[0pt]
     {\\sihao\\vspace{6pt}}
-    {第\\thecontentslabel 章\\quad}
+    {\\thecontentslabel\\quad}
     {}
     {\\titlerule*[0.5pc]{.}\\contentspage}
 
@@ -167,7 +167,9 @@ export const njulifeTemplate = {
     citecolor=black,
     urlcolor=blue,
     bookmarksnumbered=true,
-    pdfstartview=FitH
+    pdfstartview=FitH,
+    plainpages=false,
+    pdfpagelabels=true
 }
 
 %% ==================== 行距设置 ====================

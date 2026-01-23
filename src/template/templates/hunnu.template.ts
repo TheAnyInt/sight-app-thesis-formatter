@@ -92,7 +92,7 @@ export const hunnuTemplate = {
 \\usepackage{makecell}
 \\usepackage{forloop}
 \\usepackage{xstring}
-\\usepackage[unicode,psdextra]{hyperref}
+\\usepackage[unicode,psdextra,plainpages=false,pdfpagelabels]{hyperref}
 \\usepackage[nameinlink]{cleveref}
 \\usepackage{bookmark}
 \\usepackage{enumitem}

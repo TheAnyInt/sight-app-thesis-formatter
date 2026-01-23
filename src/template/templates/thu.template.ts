@@ -49,7 +49,7 @@ export const thuTemplate = {
 \\usepackage{enumitem}
 \\usepackage{graphicx}
 \\usepackage{float}
-\\usepackage[colorlinks=true,linkcolor=black,anchorcolor=black,citecolor=black,urlcolor=black,bookmarks=true,bookmarksnumbered=true]{hyperref}
+\\usepackage[colorlinks=true,linkcolor=black,anchorcolor=black,citecolor=black,urlcolor=black,bookmarks=true,bookmarksnumbered=true,plainpages=false,pdfpagelabels]{hyperref}
 \\usepackage{bookmark}
 
 % 数学公式
