@@ -6,6 +6,68 @@ const logger = new Logger('TableProcessor');
  * Table processing utilities for converting various table formats to LaTeX
  */
 export class TableProcessor {
+  // Strategy 1: Multi-language header detection (Chinese, English, or mixed)
+  private static detectHeaderColumns(cells: string[]): { numCols: number; confidence: number } {
+    const isHeaderCandidate = (cell: string): boolean => {
+      if (cell.length > 12) return false;  // Headers are typically short
+      if (/^[\d,.\-+%]+$/.test(cell)) return false;  // Pure numeric = data
+      if (/^[A-Z]{2,}\-?\d+$/.test(cell)) return false;  // Dataset names like CIFAR-10
+      // Mixed Chinese + alphanumeric is likely data (e.g., "项目A"), not header
+      if (/[\u4e00-\u9fa5]/.test(cell) && /[a-zA-Z0-9]/.test(cell)) return false;
+      // CamelCase patterns are likely model/data names, not headers (e.g., ResNet, ModelA)
+      if (/[a-z][A-Z]/.test(cell)) return false;
+      // Words ending with uppercase after lowercase (e.g., ModelA) are data
+      if (/[a-z][A-Z]$/.test(cell)) return false;
+      // Accept pure Chinese, pure English words, or short identifiers like "F1"
+      return /^[\u4e00-\u9fa5]+$/.test(cell) || /^[A-Za-z][A-Za-z0-9]*$/.test(cell);
+    };
+
+    let headerCount = 0;
+    for (const cell of cells) {
+      if (isHeaderCandidate(cell)) {
+        headerCount++;
+        if (headerCount > 8) break;
+      } else {
+        break;
+      }
+    }
+
+    if (headerCount >= 2 && headerCount <= 8) {
+      const expectedRows = Math.floor(cells.length / headerCount);
+      if (expectedRows >= 2 && cells.length % headerCount === 0) {
+        return { numCols: headerCount, confidence: 0.9 };
+      }
+      return { numCols: headerCount, confidence: 0.6 };
+    }
+    return { numCols: 0, confidence: 0 };
+  }
+
+  // Strategy 2: Detect by cell type patterns (text, number, identifier)
+  private static detectByPattern(cells: string[]): { numCols: number; confidence: number } {
+    const getCellType = (cell: string): string => {
+      if (/^[\d,.\-+%]+$/.test(cell)) return 'num';
+      if (/^[\u4e00-\u9fa5]+$/.test(cell)) return 'chn';
+      if (/^[a-zA-Z][\w\-]*$/.test(cell)) return 'id';
+      return 'mix';
+    };
+
+    // All-numeric cells = ambiguous structure, don't try to detect
+    const hasNonNumeric = cells.some(c => getCellType(c) !== 'num');
+    if (!hasNonNumeric) return { numCols: 0, confidence: 0 };
+
+    // Find repeating type patterns
+    for (let stride = 2; stride <= 8; stride++) {
+      let matches = 0;
+      for (let i = 0; i + stride < cells.length; i++) {
+        if (getCellType(cells[i]) === getCellType(cells[i + stride])) matches++;
+      }
+      const total = cells.length - stride;
+      if (total > 0 && matches / total > 0.6) {
+        return { numCols: stride, confidence: matches / total * 0.8 };
+      }
+    }
+    return { numCols: 0, confidence: 0 };
+  }
   /**
    * Convert markdown tables to LaTeX tabular format
    * This is a fallback in case the LLM doesn't convert them
@@ -76,45 +138,24 @@ export class TableProcessor {
 
         if (cells.length < 4) return match; // Not enough cells for a table
 
-        // Try to determine number of columns by analyzing content
-        // Heuristic: headers are usually short Chinese text, data rows start with alphanumeric identifiers
-        let numCols = 4; // Default assumption
+        // Try multiple detection strategies
+        const strategies = [
+          this.detectHeaderColumns(cells),
+          this.detectByPattern(cells),
+        ];
 
-        // Count consecutive Chinese-only text cells at the start (likely headers)
-        let headerCount = 0;
-        for (const cell of cells) {
-          // Check if cell is Chinese text (header candidate)
-          if (/^[\u4e00-\u9fa5]+$/.test(cell)) {
-            headerCount++;
-            if (headerCount > 6) break;
-          } else {
-            // Found non-Chinese cell (data row starts)
-            break;
-          }
+        const best = strategies
+          .filter(s => s.confidence > 0.5)
+          .sort((a, b) => b.confidence - a.confidence)[0];
+
+        if (!best) {
+          logger.warn('Column detection failed, preserving original markers');
+          return match;  // Keep original instead of guessing
         }
 
-        // If we found 2-6 Chinese headers, use that as column count
-        if (headerCount >= 2 && headerCount <= 6) {
-          numCols = headerCount;
-        } else {
-          // Fallback: try to detect repeating patterns
-          // Look for the first numeric value and count cells before next occurrence of similar pattern
-          const numericPattern = /^[\d,.\-+%]+$/;
-          for (let i = 0; i < Math.min(10, cells.length); i++) {
-            if (numericPattern.test(cells[i])) {
-              // Found first number, look for next occurrence of number after non-numbers
-              for (let j = i + 1; j < Math.min(i + 8, cells.length); j++) {
-                if (numericPattern.test(cells[j]) && j - i >= 2 && j - i <= 6) {
-                  numCols = j - i + 1; // Include the number in the count
-                  break;
-                }
-              }
-              break;
-            }
-          }
-        }
+        const numCols = best.numCols;
 
-        // Group cells into rows
+        // Validate reconstructed table
         const rows: string[][] = [];
         for (let i = 0; i < cells.length; i += numCols) {
           const row = cells.slice(i, i + numCols);
@@ -123,7 +164,26 @@ export class TableProcessor {
           }
         }
 
-        if (rows.length < 2) return match; // Need at least header + 1 data row
+        // Validation: need header + at least 1 data row
+        if (rows.length < 2) {
+          logger.warn('Table too small after reconstruction');
+          return match;
+        }
+
+        // Validation: check we didn't lose too many cells
+        const usedCells = rows.length * numCols;
+        if (usedCells < cells.length * 0.8) {
+          logger.warn(`Lost ${cells.length - usedCells} cells, preserving original`);
+          return match;
+        }
+
+        // Validation: header row should have at least one non-numeric cell
+        const isNumeric = (cell: string) => /^[\d,.\-+%]+$/.test(cell);
+        const hasTextHeader = rows[0].some(cell => !isNumeric(cell));
+        if (!hasTextHeader) {
+          logger.warn('No text headers found, preserving original');
+          return match;
+        }
 
         // Build LaTeX table
         const colSpec = '|' + 'c|'.repeat(numCols);

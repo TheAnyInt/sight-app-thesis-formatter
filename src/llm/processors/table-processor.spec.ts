@@ -151,5 +151,65 @@ describe('TableProcessor', () => {
       const tableCount = (result.match(/\\begin\{table\}/g) || []).length;
       expect(tableCount).toBe(2);
     });
+
+    it('should handle English headers', () => {
+      const input = `[TABLE_START]
+[TABLE_CELL: Dataset]
+[TABLE_CELL: Classes]
+[TABLE_CELL: Samples]
+[TABLE_CELL: CIFAR-10]
+[TABLE_CELL: 10]
+[TABLE_CELL: 60000]
+[TABLE_END]`;
+      const result = TableProcessor.convertTableCellsToLatex(input);
+      expect(result).toContain('Dataset & Classes & Samples');
+      expect(result).toContain('CIFAR-10 & 10 & 60000');
+    });
+
+    it('should handle mixed Chinese/English headers', () => {
+      const input = `[TABLE_START]
+[TABLE_CELL: 模型]
+[TABLE_CELL: Accuracy]
+[TABLE_CELL: F1]
+[TABLE_CELL: ResNet]
+[TABLE_CELL: 95.2]
+[TABLE_CELL: 94.8]
+[TABLE_END]`;
+      const result = TableProcessor.convertTableCellsToLatex(input);
+      expect(result).toContain('模型 & Accuracy & F1');
+    });
+
+    it('should preserve original when detection fails', () => {
+      const input = `[TABLE_START]
+[TABLE_CELL: 1]
+[TABLE_CELL: 2]
+[TABLE_CELL: 3]
+[TABLE_CELL: 4]
+[TABLE_CELL: 5]
+[TABLE_END]`;
+      const result = TableProcessor.convertTableCellsToLatex(input);
+      // All numeric, ambiguous structure - should preserve
+      expect(result).toContain('[TABLE_START]');
+    });
+
+    it('should handle 4-column tables correctly', () => {
+      const input = `[TABLE_START]
+[TABLE_CELL: Name]
+[TABLE_CELL: Type]
+[TABLE_CELL: Size]
+[TABLE_CELL: Score]
+[TABLE_CELL: ModelA]
+[TABLE_CELL: CNN]
+[TABLE_CELL: 10M]
+[TABLE_CELL: 92.5]
+[TABLE_CELL: ModelB]
+[TABLE_CELL: RNN]
+[TABLE_CELL: 5M]
+[TABLE_CELL: 89.3]
+[TABLE_END]`;
+      const result = TableProcessor.convertTableCellsToLatex(input);
+      expect(result).toContain('{|c|c|c|c|}');
+      expect(result).toContain('Name & Type & Size & Score');
+    });
   });
 });
