@@ -1,264 +1,520 @@
-# 前端对接文档：3步论文格式化工作流
+# 前端集成文档 - API接口说明
 
-## 概述
+## 文档定位
 
-本文档面向前端开发者，说明如何对接新的3步论文格式化工作流API。
+本文档是**后端与前端的接口契约**，说明：
+- 提供哪些API端点
+- 请求/响应的数据格式
+- 工作流程如何串联
+- 关键业务概念
 
-### 新旧流程对比
+**不包含**：前端如何实现UI、状态管理、组件设计等（这些由前端团队自行决定）
+
+---
+
+## 工作流程概述
+
+### 新3步流程（推荐）
 
 ```
-旧流程（仍可用）：
-上传 → 等待15秒 → 下载PDF
+1. POST /thesis/analyze
+   ↓ 返回 analysisId + 分析结果
 
-新流程（推荐）：
-分析(0.1s) → 用户选择要生成什么 → 生成(3s) → 下载PDF
+2. POST /thesis/generate （可选）
+   ↓ 使用 analysisId，选择要生成的字段
+   ↓ 返回生成的数据
+
+3. POST /thesis/render
+   ↓ 使用 analysisId，渲染PDF
+   ↓ 返回 jobId
+
+4. GET /thesis/jobs/:jobId （轮询）
+   ↓ 获取PDF下载链接
 ```
 
-**新流程优势**：
-- 用户可见缺失内容
+**优势**：
+- 用户可见文档缺失内容
 - 用户控制AI生成范围
-- 节省80%费用
-- 更好的用户体验
+- 节省80%费用（按需生成）
+
+### 旧2步流程（仍支持）
+
+```
+1. POST /thesis/extract 或 POST /thesis/upload
+   ↓ AI自动提取所有内容
+
+2. POST /thesis/render
+   ↓ 渲染PDF
+```
+
+**说明**：所有旧端点继续工作，向后兼容。
 
 ---
 
-## 基础配置
+## 认证
 
-### API Base URL
-```javascript
-const API_BASE = 'http://localhost:3000';
-```
+所有API请求需要JWT Token：
 
-### 认证
-所有请求需要JWT Token：
-```javascript
-const headers = {
-  'Authorization': `Bearer ${token}`
-};
+```http
+Authorization: Bearer <your-jwt-token>
 ```
 
 ---
 
-## 完整工作流程
+## API端点详细说明
 
-### 第1步：分析文档（AI驱动）
+### 1. 分析文档（第1步）
 
-#### 接口
+#### 基本信息
+
 ```
 POST /thesis/analyze
 Content-Type: multipart/form-data
 ```
 
-**🆕 重要更新**：此端点现在使用AI进行内容提取，可以准确识别非结构化文档和自然语言内容。
+**用途**：使用AI提取文档内容，分析完整性，返回分析结果和改进建议。
 
 #### 请求参数
-```javascript
-const formData = new FormData();
-formData.append('file', fileObject);           // File对象
-formData.append('templateId', 'njulife-2');    // 模板ID（必填）
-formData.append('model', 'gpt-4o');            // 可选：指定LLM模型
-```
 
-#### 分析特点
-- ✅ **AI智能提取**：使用LLM理解文档内容，支持任意格式和非结构化文档
-- ✅ **模板感知**：不同模板产生不同的分析结果（基于模板的requiredFields和requiredSections）
-- ✅ **长文档支持**：自动处理大文档（>45k字符自动分块处理）
-- ✅ **多语言支持**：同时处理中英文内容
-- ⏱️ **处理时间**：短文档约3-5秒，长文档可能需要更长时间
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `file` | File | ✅ | 文档文件（.docx, .pdf, .txt, .md，最大50MB） |
+| `templateId` | string | ✅ | 模板ID（见下方模板列表） |
+| `model` | string | ❌ | LLM模型（默认：gpt-4o） |
 
-#### 响应示例
+**支持的模板ID**：
+- `hunnu` - 湖南师范大学本科毕业论文
+- `thu` - 清华大学学位论文
+- `njulife` - 南京大学生命科学学院硕士论文 v1（8字段，含英文）
+- `njulife-2` - 南京大学生命科学学院硕士论文 v2（5字段）
+- `njuthesis` - 南京大学官方学位论文模板
+- `scut` - 华南理工大学学位论文
+
+#### 响应格式
+
 ```json
 {
-  "analysisId": "a1b2c3d4-...",
+  "analysisId": "uuid",              // 分析ID，1小时有效期
   "extractedData": {
     "metadata": {
-      "title": "深度学习图像识别研究",
-      "author_name": "张三",
-      "supervisor": "",              // 空表示缺失
-      "school": "计算机学院",
-      "major": "计算机科学",
-      "student_id": "",
-      "date": ""
+      "title": "论文标题",           // 提取的值或空字符串
+      "title_en": "English Title",
+      "author_name": "作者",
+      "author_name_en": "Author Name",  // NJULife模板特有
+      "student_id": "学号",
+      "school": "学院",
+      "major": "专业",
+      "major_en": "Major Name",         // NJULife模板特有
+      "supervisor": "导师",
+      "supervisor_en": "Supervisor",    // NJULife模板特有
+      "date": "日期"
     },
-    "abstract": "本文研究...",        // 可能为空或不完整
-    "keywords": "深度学习、图像识别",
+    "abstract": "中文摘要内容",
+    "abstract_en": "English abstract",
+    "keywords": "关键词1、关键词2",
+    "keywords_en": "keyword1, keyword2",
     "sections": [
       {
-        "title": "绪论",
-        "content": "本文介绍...",
-        "level": 1
+        "title": "章节标题",
+        "content": "章节内容...",
+        "level": 1                      // 1=章, 2=节, 3=小节
       }
     ],
-    "references": null,
-    "acknowledgements": null
+    "references": "参考文献内容",
+    "acknowledgements": "致谢内容"
   },
   "templateRequirements": {
-    "requiredFields": ["metadata.title", "metadata.author_name", "abstract"],
+    "requiredFields": ["metadata.title", "metadata.author_name", ...],
     "requiredSections": ["sections"]
   },
   "analysis": {
     "completeness": {
       "metadata": {
-        "title": "complete",         // complete | partial | missing
+        "title": "complete",           // complete | partial | missing
         "author_name": "complete",
         "supervisor": "missing",
-        "school": "complete",
-        "major": "complete",
-        "student_id": "missing",
-        "date": "missing"
+        // ... 其他字段
       },
-      "abstract": "partial",         // 不完整
+      "abstract": "partial",
       "abstract_en": "missing",
       "keywords": "complete",
       "keywords_en": "missing",
       "sections": {
         "hasContent": true,
         "count": 5,
-        "qualityScore": "sparse"     // good | sparse | empty
+        "qualityScore": "sparse"       // good | sparse | empty
       },
       "references": "missing",
       "acknowledgements": "missing"
     },
-    "suggestions": [
-      "缺少或不完整的元数据字段：supervisor, student_id, date。可以考虑使用AI生成。",
-      "摘要不完整或缺失。AI可以根据内容生成全面的摘要。",
-      "发现5个内容稀疏的章节。AI可以扩展和增强现有章节。",
-      "参考文献部分缺失。添加引用或让AI格式化现有参考文献。",
-      "致谢部分缺失。您可能想添加此部分。"
+    "suggestions": [                   // 改进建议数组
+      "缺少或不完整的元数据字段：supervisor, date",
+      "摘要不完整。AI可以根据内容生成全面的摘要",
+      "发现5个内容稀疏的章节",
+      "参考文献部分缺失"
     ]
   },
-  "model": "gpt-4o",                     // 使用的LLM模型
+  "model": "gpt-4o",
   "images": [
     {
       "id": "docximg1",
       "filename": "docximg1.png",
       "contentType": "image/png",
-      "url": "/thesis/analyses/a1b2c3d4-.../images/docximg1"
+      "url": "/thesis/analyses/{analysisId}/images/docximg1"
     }
   ],
   "createdAt": "2024-01-29T12:00:00Z",
-  "expiresAt": "2024-01-29T13:00:00Z"  // 1小时有效期
+  "expiresAt": "2024-01-29T13:00:00Z"  // 1小时后过期
 }
 ```
 
-#### 前端处理
-```javascript
-async function analyzeThesis(file, templateId, model = 'gpt-4o') {
-  const formData = new FormData();
-  formData.append('file', file);
-  formData.append('templateId', templateId);
-  formData.append('model', model);  // 可选：指定LLM模型
+#### 特性说明
 
-  const response = await fetch(`${API_BASE}/thesis/analyze`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
-    body: formData
-  });
-
-  if (!response.ok) {
-    throw new Error(`分析失败: ${response.statusText}`);
-  }
-
-  return await response.json();
-}
-```
+- **AI驱动**：使用LLM智能理解文档内容
+- **模板感知**：不同模板返回不同的required fields
+- **字段映射**：自动处理模板特有字段名（如advisor→supervisor）
+- **长文档支持**：自动分块处理>45k字符的文档
+- **处理时间**：短文档3-5秒，长文档更久
 
 ---
 
-### 第2步：选择性生成（可选）
+### 2. 生成字段（第2步，可选）
 
-#### 何时调用
-- 用户查看分析结果后，选择需要AI生成的字段
-- 如果文档完整，可以跳过此步骤
+#### 基本信息
 
-#### 接口
 ```
 POST /thesis/generate
 Content-Type: application/json
 ```
 
-#### 请求参数
-```javascript
+**用途**：选择性地使用AI生成缺失或不完整的字段。
+
+#### 请求格式
+
+```json
 {
-  "analysisId": "a1b2c3d4-...",  // 从第1步获取
+  "analysisId": "uuid",              // 从第1步获取
   "generateFields": {
-    // 选择性指定要生成的字段
-    "metadata": ["supervisor", "date"],  // 数组：指定元数据字段
-    "abstract": true,                     // 布尔：生成中文摘要
-    "abstract_en": false,                 // 不生成英文摘要
-    "keywords": false,                    // 已有关键词，不生成
-    "keywords_en": true,                  // 生成英文关键词
+    "metadata": ["supervisor", "date"],  // 要生成的元数据字段数组
+    "abstract": true,                    // 生成/增强中文摘要
+    "abstract_en": true,                 // 生成英文摘要
+    "keywords": false,                   // 不生成
+    "keywords_en": true,                 // 生成英文关键词
     "sections": {
-      "enhance": true,                    // 增强现有章节
-      "addMissing": ["结论"]              // 生成指定的缺失章节
+      "enhance": true,                   // 增强现有章节
+      "addMissing": ["结论", "展望"]     // 生成新章节（按标题）
     },
-    "references": false,                  // 已有参考文献
-    "acknowledgements": true              // 生成致谢
+    "references": false,
+    "acknowledgements": true
   },
-  "model": "gpt-4o"  // 可选：指定模型
+  "model": "gpt-4o"  // 可选
 }
 ```
 
-#### 字段说明
+**可生成的metadata字段**：
+- `title`, `title_en`, `author_name`, `author_name_en`
+- `student_id`, `school`, `major`, `major_en`
+- `supervisor`, `supervisor_en`, `date`
 
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `metadata` | `string[]` | 要生成的元数据字段数组<br>可选值：`title`, `title_en`, `author_name`, `student_id`, `school`, `major`, `supervisor`, `date` |
-| `abstract` | `boolean` | 是否生成/增强中文摘要 |
-| `abstract_en` | `boolean` | 是否生成英文摘要 |
-| `keywords` | `boolean` | 是否生成中文关键词 |
-| `keywords_en` | `boolean` | 是否生成英文关键词 |
-| `sections.enhance` | `boolean` | 是否增强现有章节内容 |
-| `sections.addMissing` | `string[]` | 要生成的新章节名称数组 |
-| `references` | `boolean` | 是否格式化/生成参考文献 |
-| `acknowledgements` | `boolean` | 是否生成致谢 |
+**注意**：
+- 所有字段都是可选的，只生成你指定的
+- `metadata`数组中的字段名使用ThesisData标准名称（不是模板字段名）
+- 可以多次调用，幂等操作
 
-#### 响应示例
+#### 响应格式
+
 ```json
 {
   "enrichedData": {
+    // 与extractedData格式相同
+    // 包含原有数据 + AI生成的数据
     "metadata": {
-      "title": "深度学习图像识别研究",
-      "author_name": "张三",
-      "supervisor": "李教授",           // ✅ AI生成
-      "school": "计算机学院",
-      "major": "计算机科学",
-      "student_id": "2020123456",
-      "date": "2024年5月"               // ✅ AI生成
+      "title": "原有或生成的标题",
+      "supervisor": "AI生成的导师",  // 新生成
+      // ...
     },
-    "abstract": "本文针对...",          // ✅ AI增强
-    "keywords": "深度学习、图像识别",
-    "keywords_en": "deep learning, image recognition",  // ✅ AI生成
-    "sections": [
-      {
-        "title": "绪论",
-        "content": "本文介绍...(增强后的内容)",  // ✅ AI增强
-        "level": 1
-      },
-      {
-        "title": "结论",
-        "content": "综上所述...",           // ✅ AI新生成
-        "level": 1
-      }
-    ],
-    "acknowledgements": "在此感谢..."    // ✅ AI生成
+    "abstract": "增强后的摘要",
+    // ...
   },
-  "generatedFields": [
+  "generatedFields": [               // 实际生成了哪些字段
     "metadata",
     "abstract",
     "keywords_en",
-    "sections",
     "acknowledgements"
   ],
   "model": "gpt-4o"
 }
 ```
 
-#### 前端处理
+---
+
+### 3. 渲染PDF（第3步）
+
+#### 基本信息
+
+```
+POST /thesis/render
+Content-Type: application/json
+```
+
+**用途**：使用分析/生成的数据渲染LaTeX并生成PDF。
+
+#### 请求格式
+
+```json
+{
+  "analysisId": "uuid",              // 新流程：使用analysisId
+  // 或
+  "extractionId": "uuid",            // 旧流程：使用extractionId
+
+  "templateId": "njulife-2",         // 必填
+
+  "document": {                      // 可选：手动覆盖的数据
+    "metadata": {
+      "title": "手动编辑的标题"
+    },
+    "sections": [
+      // 手动编辑的章节
+    ]
+  }
+}
+```
+
+**注意**：
+- 必须提供`analysisId`或`extractionId`之一
+- `document`参数可以覆盖分析/生成的数据
+
+#### 响应格式
+
+```json
+{
+  "jobId": "job-uuid",
+  "status": "pending",               // pending | processing | completed | failed
+  "pollUrl": "/thesis/jobs/job-uuid"
+}
+```
+
+---
+
+### 4. 查询任务状态（轮询）
+
+#### 基本信息
+
+```
+GET /thesis/jobs/:jobId
+```
+
+**用途**：查询PDF渲染任务的进度和结果。
+
+#### 响应格式
+
+**进行中**：
+```json
+{
+  "jobId": "job-uuid",
+  "status": "processing",
+  "progress": 75,
+  "createdAt": "2024-01-29T12:00:00Z",
+  "updatedAt": "2024-01-29T12:01:30Z"
+}
+```
+
+**已完成**：
+```json
+{
+  "jobId": "job-uuid",
+  "status": "completed",
+  "progress": 100,
+  "downloadUrl": "/thesis/jobs/job-uuid/download",  // PDF下载链接
+  "texUrl": "/thesis/jobs/job-uuid/tex",            // LaTeX源码下载
+  "createdAt": "2024-01-29T12:00:00Z",
+  "updatedAt": "2024-01-29T12:05:00Z"
+}
+```
+
+**失败**：
+```json
+{
+  "jobId": "job-uuid",
+  "status": "failed",
+  "error": "错误信息",
+  "createdAt": "2024-01-29T12:00:00Z",
+  "updatedAt": "2024-01-29T12:05:00Z"
+}
+```
+
+**轮询建议**：每2秒查询一次，直到status为`completed`或`failed`。
+
+---
+
+### 5. 下载文件
+
+#### PDF下载
+
+```
+GET /thesis/jobs/:jobId/download
+```
+
+返回：PDF文件（二进制）
+
+#### LaTeX源码下载
+
+```
+GET /thesis/jobs/:jobId/tex
+```
+
+返回：.tex文件
+
+---
+
+## 辅助端点
+
+### 获取可用模型列表
+
+```
+GET /thesis/models
+```
+
+响应：
+```json
+{
+  "models": ["gpt-4o", "gpt-4-turbo", "DeepSeek-V3.2-Exp"],
+  "defaultModel": "gpt-4o"
+}
+```
+
+### 获取用户任务列表
+
+```
+GET /thesis/jobs?page=1&count=10
+```
+
+响应：
+```json
+{
+  "jobs": [
+    {
+      "jobId": "job-uuid",
+      "status": "completed",
+      "templateId": "njulife-2",
+      "createdAt": "2024-01-29T12:00:00Z",
+      "downloadUrl": "/thesis/jobs/job-uuid/download"
+    }
+  ],
+  "total": 42,
+  "page": 1,
+  "count": 10,
+  "totalPages": 5
+}
+```
+
+---
+
+## 错误处理
+
+### HTTP状态码
+
+| 状态码 | 说明 | 处理建议 |
+|--------|------|---------|
+| `200` | 成功 | - |
+| `400` | 请求参数错误 | 检查请求格式、文件类型 |
+| `401` | 未授权 | Token无效或过期，重新登录 |
+| `404` | 资源不存在 | analysisId过期（1小时）或jobId不存在 |
+| `500` | 服务器错误 | 联系后端团队 |
+
+### 错误响应格式
+
+```json
+{
+  "statusCode": 400,
+  "message": "错误描述",
+  "error": "Bad Request"
+}
+```
+
+### 常见错误
+
+#### 1. 分析ID过期
+```json
+{
+  "statusCode": 404,
+  "message": "Analysis 'xxx' not found"
+}
+```
+**解决**：重新调用`/thesis/analyze`
+
+#### 2. 文件格式不支持
+```json
+{
+  "statusCode": 400,
+  "message": "Only .docx, .txt, .md, .pdf files are allowed"
+}
+```
+
+#### 3. 模板ID无效
+```json
+{
+  "statusCode": 404,
+  "message": "Template 'xxx' not found"
+}
+```
+
+---
+
+## 关键概念说明
+
+### analysisId
+- 分析文档后返回的唯一ID
+- **有效期1小时**
+- 用于关联第2步（生成）和第3步（渲染）
+- 过期后需重新分析
+
+### templateId
+- 指定使用哪个大学的论文模板
+- 不同模板有不同的`requiredFields`
+- 影响分析结果和PDF格式
+
+### 字段映射
+后端自动处理模板特有字段名：
+- HUNNU: `advisor` → `supervisor`, `college` → `school`
+- NJULife: `authorEn` → `author_name_en`, `majorEn` → `major_en`
+- SCUT: `department` → `school`
+
+前端始终使用标准ThesisData字段名（如`supervisor`），后端负责映射。
+
+### completeness状态
+- `complete`：字段有值且完整
+- `partial`：字段有值但不完整（如摘要太短）
+- `missing`：字段缺失或为空
+
+---
+
+## 简单调用示例
+
+### JavaScript (纯Fetch API)
+
 ```javascript
-async function generateFields(analysisId, selectedFields) {
+const API_BASE = 'http://localhost:3000';
+const token = 'your-jwt-token';
+
+// 第1步：分析
+async function step1_analyze(file, templateId) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('templateId', templateId);
+
+  const response = await fetch(`${API_BASE}/thesis/analyze`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: formData
+  });
+
+  return await response.json();
+  // { analysisId, extractedData, analysis, ... }
+}
+
+// 第2步：生成（可选）
+async function step2_generate(analysisId, fields) {
   const response = await fetch(`${API_BASE}/thesis/generate`, {
     method: 'POST',
     headers: {
@@ -267,993 +523,146 @@ async function generateFields(analysisId, selectedFields) {
     },
     body: JSON.stringify({
       analysisId,
-      generateFields: selectedFields,
-      model: 'gpt-4o'  // 可选
+      generateFields: fields
     })
   });
 
-  if (!response.ok) {
-    throw new Error(`生成失败: ${response.statusText}`);
-  }
-
   return await response.json();
+  // { enrichedData, generatedFields, ... }
 }
-```
 
----
-
-### 第3步：渲染PDF
-
-#### 接口
-```
-POST /thesis/render
-Content-Type: application/json
-```
-
-#### 请求参数
-```javascript
-{
-  "analysisId": "a1b2c3d4-...",  // 新流程：使用analysisId
-  // 或
-  "extractionId": "x1y2z3...",   // 旧流程：使用extractionId（向后兼容）
-
-  "templateId": "njulife-2",     // 必需
-  "document": {                   // 可选：手动编辑的数据
-    "metadata": { ... },
-    "sections": [ ... ]
-  }
-}
-```
-
-#### 响应示例
-```json
-{
-  "jobId": "job-abc123",
-  "status": "pending",
-  "pollUrl": "/thesis/jobs/job-abc123"
-}
-```
-
-#### 前端处理
-```javascript
-async function renderThesis(analysisId, templateId) {
+// 第3步：渲染
+async function step3_render(analysisId, templateId) {
   const response = await fetch(`${API_BASE}/thesis/render`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      analysisId,
-      templateId
-    })
+    body: JSON.stringify({ analysisId, templateId })
   });
 
-  if (!response.ok) {
-    throw new Error(`渲染失败: ${response.statusText}`);
-  }
-
   return await response.json();
+  // { jobId, status, pollUrl }
 }
-```
 
----
+// 第4步：轮询
+async function step4_poll(jobId) {
+  const response = await fetch(`${API_BASE}/thesis/jobs/${jobId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
 
-### 第4步：轮询任务状态
+  const job = await response.json();
 
-#### 接口
-```
-GET /thesis/jobs/:jobId
-```
-
-#### 响应示例
-```json
-{
-  "jobId": "job-abc123",
-  "status": "completed",           // pending | processing | completed | failed
-  "progress": 100,
-  "createdAt": "2024-01-29T12:00:00Z",
-  "updatedAt": "2024-01-29T12:05:00Z",
-  "downloadUrl": "/thesis/jobs/job-abc123/download",
-  "texUrl": "/thesis/jobs/job-abc123/tex"
+  if (job.status === 'completed') {
+    return job;  // { downloadUrl, texUrl, ... }
+  } else if (job.status === 'failed') {
+    throw new Error(job.error);
+  } else {
+    // 继续轮询
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    return step4_poll(jobId);
+  }
 }
-```
 
-#### 前端处理
-```javascript
-async function pollJobStatus(jobId, onProgress) {
-  const poll = async () => {
-    const response = await fetch(`${API_BASE}/thesis/jobs/${jobId}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
+// 完整流程
+async function completeWorkflow(file) {
+  // 1. 分析
+  const analysis = await step1_analyze(file, 'njulife-2');
 
-    const job = await response.json();
-
-    // 回调进度
-    if (onProgress) {
-      onProgress(job);
-    }
-
-    if (job.status === 'completed') {
-      return job;
-    } else if (job.status === 'failed') {
-      throw new Error(job.error || '任务失败');
-    } else {
-      // 继续轮询（每2秒）
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      return poll();
-    }
+  // 2. 根据分析结果，让用户选择要生成什么
+  // （前端UI逻辑，此处省略）
+  const selectedFields = {
+    metadata: ['supervisor'],
+    abstract: true
   };
 
-  return poll();
+  await step2_generate(analysis.analysisId, selectedFields);
+
+  // 3. 渲染
+  const renderJob = await step3_render(analysis.analysisId, 'njulife-2');
+
+  // 4. 轮询直到完成
+  const completedJob = await step4_poll(renderJob.jobId);
+
+  // 5. 下载
+  window.location.href = `${API_BASE}${completedJob.downloadUrl}`;
 }
 ```
 
 ---
 
-## 完整示例代码
+## 数据流图
 
-### React Hooks 实现
-
-```jsx
-import { useState } from 'react';
-
-function useThesisFormatter() {
-  const [step, setStep] = useState('idle');  // idle | analyzing | analyzed | generating | rendering | polling | completed
-  const [analysis, setAnalysis] = useState(null);
-  const [job, setJob] = useState(null);
-  const [error, setError] = useState(null);
-  const [progress, setProgress] = useState(0);
-
-  // 第1步：分析
-  const analyze = async (file, templateId) => {
-    try {
-      setStep('analyzing');
-      setError(null);
-
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('templateId', templateId);
-
-      const response = await fetch(`${API_BASE}/thesis/analyze`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`
-        },
-        body: formData
-      });
-
-      if (!response.ok) throw new Error('分析失败');
-
-      const result = await response.json();
-      setAnalysis(result);
-      setStep('analyzed');
-      return result;
-    } catch (err) {
-      setError(err.message);
-      setStep('idle');
-      throw err;
-    }
-  };
-
-  // 第2步：生成（可选）
-  const generate = async (selectedFields) => {
-    try {
-      setStep('generating');
-      setError(null);
-
-      const response = await fetch(`${API_BASE}/thesis/generate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          analysisId: analysis.analysisId,
-          generateFields: selectedFields
-        })
-      });
-
-      if (!response.ok) throw new Error('生成失败');
-
-      const result = await response.json();
-      setStep('analyzed');  // 回到analyzed状态，用户可以继续修改
-      return result;
-    } catch (err) {
-      setError(err.message);
-      throw err;
-    }
-  };
-
-  // 第3步：渲染
-  const render = async (templateId) => {
-    try {
-      setStep('rendering');
-      setError(null);
-
-      const response = await fetch(`${API_BASE}/thesis/render`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          analysisId: analysis.analysisId,
-          templateId
-        })
-      });
-
-      if (!response.ok) throw new Error('渲染失败');
-
-      const result = await response.json();
-      setJob(result);
-      setStep('polling');
-
-      // 开始轮询
-      pollStatus(result.jobId);
-      return result;
-    } catch (err) {
-      setError(err.message);
-      setStep('analyzed');
-      throw err;
-    }
-  };
-
-  // 轮询任务状态
-  const pollStatus = async (jobId) => {
-    const poll = async () => {
-      try {
-        const response = await fetch(`${API_BASE}/thesis/jobs/${jobId}`, {
-          headers: {
-            'Authorization': `Bearer ${getToken()}`
-          }
-        });
-
-        const jobData = await response.json();
-        setJob(jobData);
-        setProgress(jobData.progress);
-
-        if (jobData.status === 'completed') {
-          setStep('completed');
-        } else if (jobData.status === 'failed') {
-          setError(jobData.error);
-          setStep('analyzed');
-        } else {
-          setTimeout(poll, 2000);  // 2秒后继续轮询
-        }
-      } catch (err) {
-        setError(err.message);
-        setStep('analyzed');
-      }
-    };
-
-    poll();
-  };
-
-  return {
-    step,
-    analysis,
-    job,
-    error,
-    progress,
-    analyze,
-    generate,
-    render
-  };
-}
-
-// 使用示例
-function ThesisUploader() {
-  const { step, analysis, job, error, progress, analyze, generate, render } = useThesisFormatter();
-  const [selectedFields, setSelectedFields] = useState({});
-
-  // 步骤1：上传文件
-  if (step === 'idle' || step === 'analyzing') {
-    return (
-      <div>
-        <h2>上传论文</h2>
-        <input
-          type="file"
-          accept=".docx,.pdf,.txt,.md"
-          onChange={(e) => {
-            if (e.target.files[0]) {
-              analyze(e.target.files[0], 'njulife-2');
-            }
-          }}
-          disabled={step === 'analyzing'}
-        />
-        {step === 'analyzing' && <p>正在分析...</p>}
-        {error && <p className="error">{error}</p>}
-      </div>
-    );
-  }
-
-  // 步骤2：显示分析结果，让用户选择
-  if (step === 'analyzed') {
-    return (
-      <div>
-        <h2>分析结果</h2>
-
-        {/* 显示建议 */}
-        <div className="suggestions">
-          <h3>AI建议：</h3>
-          <ul>
-            {analysis.analysis.suggestions.map((suggestion, i) => (
-              <li key={i}>{suggestion}</li>
-            ))}
-          </ul>
-        </div>
-
-        {/* 字段选择器 */}
-        <FieldSelector
-          analysis={analysis}
-          selectedFields={selectedFields}
-          onChange={setSelectedFields}
-        />
-
-        {/* 操作按钮 */}
-        <div className="actions">
-          <button
-            onClick={() => generate(selectedFields)}
-            disabled={Object.keys(selectedFields).length === 0}
-          >
-            生成选中字段
-          </button>
-          <button onClick={() => render('njulife-2')}>
-            跳过生成，直接渲染
-          </button>
-        </div>
-
-        {error && <p className="error">{error}</p>}
-      </div>
-    );
-  }
-
-  // 步骤3：生成中
-  if (step === 'generating') {
-    return (
-      <div>
-        <h2>AI生成中...</h2>
-        <p>正在生成您选择的字段，请稍候</p>
-      </div>
-    );
-  }
-
-  // 步骤4：渲染和下载
-  if (step === 'rendering' || step === 'polling') {
-    return (
-      <div>
-        <h2>PDF生成中...</h2>
-        <ProgressBar value={progress} />
-        <p>{progress}%</p>
-      </div>
-    );
-  }
-
-  // 步骤5：完成
-  if (step === 'completed') {
-    return (
-      <div>
-        <h2>完成！</h2>
-        <a href={`${API_BASE}${job.downloadUrl}`} download>
-          下载PDF
-        </a>
-        <a href={`${API_BASE}${job.texUrl}`} download>
-          下载LaTeX源码
-        </a>
-        <button onClick={() => window.location.reload()}>
-          处理新文档
-        </button>
-      </div>
-    );
-  }
-
-  return null;
-}
-
-// 字段选择器组件
-function FieldSelector({ analysis, selectedFields, onChange }) {
-  const { completeness } = analysis.analysis;
-
-  // 需要生成的元数据字段
-  const missingMetadata = Object.entries(completeness.metadata)
-    .filter(([field, status]) => status !== 'complete')
-    .map(([field]) => field);
-
-  const toggleField = (category, value) => {
-    onChange({
-      ...selectedFields,
-      [category]: value
-    });
-  };
-
-  return (
-    <div className="field-selector">
-      <h3>选择要AI生成的内容：</h3>
-
-      {/* 元数据 */}
-      {missingMetadata.length > 0 && (
-        <div className="field-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={selectedFields.metadata?.length > 0}
-              onChange={(e) => toggleField('metadata', e.target.checked ? missingMetadata : [])}
-            />
-            生成缺失的元数据：{missingMetadata.join(', ')}
-          </label>
-        </div>
-      )}
-
-      {/* 摘要 */}
-      {completeness.abstract !== 'complete' && (
-        <div className="field-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={selectedFields.abstract}
-              onChange={(e) => toggleField('abstract', e.target.checked)}
-            />
-            生成/增强中文摘要
-          </label>
-        </div>
-      )}
-
-      {completeness.abstract_en !== 'complete' && (
-        <div className="field-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={selectedFields.abstract_en}
-              onChange={(e) => toggleField('abstract_en', e.target.checked)}
-            />
-            生成英文摘要
-          </label>
-        </div>
-      )}
-
-      {/* 关键词 */}
-      {completeness.keywords !== 'complete' && (
-        <div className="field-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={selectedFields.keywords}
-              onChange={(e) => toggleField('keywords', e.target.checked)}
-            />
-            生成中文关键词
-          </label>
-        </div>
-      )}
-
-      {completeness.keywords_en !== 'complete' && (
-        <div className="field-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={selectedFields.keywords_en}
-              onChange={(e) => toggleField('keywords_en', e.target.checked)}
-            />
-            生成英文关键词
-          </label>
-        </div>
-      )}
-
-      {/* 章节 */}
-      {completeness.sections.qualityScore !== 'good' && (
-        <div className="field-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={selectedFields.sections?.enhance}
-              onChange={(e) => toggleField('sections', {
-                ...selectedFields.sections,
-                enhance: e.target.checked,
-                addMissing: selectedFields.sections?.addMissing || []
-              })}
-            />
-            增强现有章节内容（当前{completeness.sections.count}个章节，质量：{completeness.sections.qualityScore}）
-          </label>
-        </div>
-      )}
-
-      {/* 参考文献 */}
-      {completeness.references !== 'complete' && (
-        <div className="field-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={selectedFields.references}
-              onChange={(e) => toggleField('references', e.target.checked)}
-            />
-            格式化/生成参考文献
-          </label>
-        </div>
-      )}
-
-      {/* 致谢 */}
-      {completeness.acknowledgements !== 'complete' && (
-        <div className="field-group">
-          <label>
-            <input
-              type="checkbox"
-              checked={selectedFields.acknowledgements}
-              onChange={(e) => toggleField('acknowledgements', e.target.checked)}
-            />
-            生成致谢
-          </label>
-        </div>
-      )}
-
-      {/* 显示预估token消耗 */}
-      <div className="token-estimate">
-        <p>预估token消耗：约{estimateTokens(selectedFields)}（约¥{estimateCost(selectedFields)}）</p>
-      </div>
-    </div>
-  );
-}
-
-// 预估token消耗
-function estimateTokens(fields) {
-  let total = 0;
-  if (fields.metadata?.length) total += 500 * fields.metadata.length;
-  if (fields.abstract) total += 2000;
-  if (fields.abstract_en) total += 2000;
-  if (fields.keywords) total += 500;
-  if (fields.keywords_en) total += 500;
-  if (fields.sections?.enhance) total += 5000;
-  if (fields.references) total += 2000;
-  if (fields.acknowledgements) total += 1000;
-  return total;
-}
-
-function estimateCost(fields) {
-  const tokens = estimateTokens(fields);
-  const costPer1000 = 0.03;  // GPT-4o价格
-  return (tokens / 1000 * costPer1000).toFixed(2);
-}
+```
+┌─────────────┐
+│  上传文件    │
+└──────┬──────┘
+       │
+       ↓ POST /thesis/analyze
+┌─────────────────────────┐
+│  analysisId (1小时)      │
+│  + extractedData         │
+│  + analysis.suggestions  │
+└──────┬──────────────────┘
+       │
+       ↓ 用户查看，选择要生成的字段
+       │
+       ↓ POST /thesis/generate (可选)
+┌─────────────────────────┐
+│  enrichedData            │
+│  (包含生成的字段)        │
+└──────┬──────────────────┘
+       │
+       ↓ POST /thesis/render
+┌─────────────────────────┐
+│  jobId                   │
+└──────┬──────────────────┘
+       │
+       ↓ GET /thesis/jobs/:jobId (轮询)
+       │
+       ↓ status: completed
+┌─────────────────────────┐
+│  downloadUrl             │
+│  (PDF文件)               │
+└─────────────────────────┘
 ```
 
 ---
 
-## Vue 3 实现
+## 重要提醒
 
-```vue
-<template>
-  <div class="thesis-uploader">
-    <!-- 步骤1：上传 -->
-    <div v-if="step === 'idle' || step === 'analyzing'">
-      <h2>上传论文</h2>
-      <input
-        type="file"
-        @change="handleFileUpload"
-        :disabled="step === 'analyzing'"
-        accept=".docx,.pdf,.txt,.md"
-      />
-      <p v-if="step === 'analyzing'">正在分析...</p>
-      <p v-if="error" class="error">{{ error }}</p>
-    </div>
-
-    <!-- 步骤2：选择生成 -->
-    <div v-else-if="step === 'analyzed'">
-      <h2>分析结果</h2>
-
-      <div class="suggestions">
-        <h3>AI建议：</h3>
-        <ul>
-          <li v-for="(suggestion, i) in analysis.analysis.suggestions" :key="i">
-            {{ suggestion }}
-          </li>
-        </ul>
-      </div>
-
-      <FieldSelector
-        :analysis="analysis"
-        v-model="selectedFields"
-      />
-
-      <div class="actions">
-        <button
-          @click="handleGenerate"
-          :disabled="!hasSelectedFields"
-        >
-          生成选中字段
-        </button>
-        <button @click="handleRender">
-          跳过生成，直接渲染
-        </button>
-      </div>
-    </div>
-
-    <!-- 步骤3：生成中 -->
-    <div v-else-if="step === 'generating'">
-      <h2>AI生成中...</h2>
-      <p>正在生成您选择的字段</p>
-    </div>
-
-    <!-- 步骤4：渲染中 -->
-    <div v-else-if="step === 'rendering' || step === 'polling'">
-      <h2>PDF生成中...</h2>
-      <progress :value="progress" max="100"></progress>
-      <p>{{ progress }}%</p>
-    </div>
-
-    <!-- 步骤5：完成 -->
-    <div v-else-if="step === 'completed'">
-      <h2>完成！</h2>
-      <a :href="`${API_BASE}${job.downloadUrl}`" download>下载PDF</a>
-      <a :href="`${API_BASE}${job.texUrl}`" download>下载LaTeX</a>
-      <button @click="reset">处理新文档</button>
-    </div>
-  </div>
-</template>
-
-<script setup>
-import { ref, computed } from 'vue';
-
-const API_BASE = 'http://localhost:3000';
-
-const step = ref('idle');
-const analysis = ref(null);
-const job = ref(null);
-const error = ref(null);
-const progress = ref(0);
-const selectedFields = ref({});
-
-const hasSelectedFields = computed(() => {
-  return Object.keys(selectedFields.value).length > 0;
-});
-
-async function handleFileUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  try {
-    step.value = 'analyzing';
-    error.value = null;
-
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('templateId', 'njulife-2');
-
-    const response = await fetch(`${API_BASE}/thesis/analyze`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: formData
-    });
-
-    if (!response.ok) throw new Error('分析失败');
-
-    analysis.value = await response.json();
-    step.value = 'analyzed';
-  } catch (err) {
-    error.value = err.message;
-    step.value = 'idle';
-  }
-}
-
-async function handleGenerate() {
-  try {
-    step.value = 'generating';
-    error.value = null;
-
-    const response = await fetch(`${API_BASE}/thesis/generate`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${getToken()}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        analysisId: analysis.value.analysisId,
-        generateFields: selectedFields.value
-      })
-    });
-
-    if (!response.ok) throw new Error('生成失败');
-
-    await response.json();
-    step.value = 'analyzed';
-  } catch (err) {
-    error.value = err.message;
-  }
-}
-
-async function handleRender() {
-  try {
-    step.value = 'rendering';
-    error.value = null;
-
-    const response = await fetch(`${API_BASE}/thesis/render`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${getToken()}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        analysisId: analysis.value.analysisId,
-        templateId: 'njulife-2'
-      })
-    });
-
-    if (!response.ok) throw new Error('渲染失败');
-
-    job.value = await response.json();
-    step.value = 'polling';
-    pollJobStatus(job.value.jobId);
-  } catch (err) {
-    error.value = err.message;
-    step.value = 'analyzed';
-  }
-}
-
-async function pollJobStatus(jobId) {
-  const poll = async () => {
-    try {
-      const response = await fetch(`${API_BASE}/thesis/jobs/${jobId}`, {
-        headers: {
-          'Authorization': `Bearer ${getToken()}`
-        }
-      });
-
-      const jobData = await response.json();
-      job.value = jobData;
-      progress.value = jobData.progress;
-
-      if (jobData.status === 'completed') {
-        step.value = 'completed';
-      } else if (jobData.status === 'failed') {
-        error.value = jobData.error;
-        step.value = 'analyzed';
-      } else {
-        setTimeout(poll, 2000);
-      }
-    } catch (err) {
-      error.value = err.message;
-      step.value = 'analyzed';
-    }
-  };
-
-  poll();
-}
-
-function reset() {
-  step.value = 'idle';
-  analysis.value = null;
-  job.value = null;
-  error.value = null;
-  progress.value = 0;
-  selectedFields.value = {};
-}
-
-function getToken() {
-  // 返回JWT token
-  return localStorage.getItem('token');
-}
-</script>
-```
+1. **analysisId有效期**：1小时，超时需重新分析
+2. **文件大小限制**：最大50MB
+3. **支持的文件格式**：.docx, .pdf, .txt, .md
+4. **向后兼容**：旧的`/thesis/extract`和`/thesis/upload`端点仍然可用
+5. **字段名规范**：前端使用ThesisData标准字段名，后端负责模板映射
+6. **并发处理**：支持同时处理多个文档，通过不同的analysisId区分
 
 ---
 
-## 错误处理
+## 技术支持
 
-### 常见错误
-
-#### 1. 分析ID过期（404）
-```json
-{
-  "statusCode": 404,
-  "message": "Analysis 'xxx' not found"
-}
-```
-
-**原因**：分析数据有1小时有效期
-**解决**：重新上传文件进行分析
-
-#### 2. 文件格式错误（400）
-```json
-{
-  "statusCode": 400,
-  "message": "Only .docx, .txt, .md, .pdf files are allowed"
-}
-```
-
-**解决**：检查文件格式
-
-#### 3. 未授权（401）
-```json
-{
-  "statusCode": 401,
-  "message": "Unauthorized"
-}
-```
-
-**解决**：检查Token是否有效
-
-#### 4. 生成失败
-```json
-{
-  "enrichedData": { ... },
-  "generatedFields": [],
-  "warnings": ["某个字段生成失败"]
-}
-```
-
-**处理**：部分成功，提示用户重试失败的字段
-
-### 错误处理示例
-
-```javascript
-async function safeAnalyze(file, templateId) {
-  try {
-    return await analyzeThesis(file, templateId);
-  } catch (error) {
-    if (error.status === 401) {
-      // 重新登录
-      redirectToLogin();
-    } else if (error.status === 400) {
-      // 文件格式错误
-      showError('文件格式不支持，请上传.docx、.pdf、.txt或.md文件');
-    } else {
-      // 其他错误
-      showError(`分析失败：${error.message}`);
-    }
-    throw error;
-  }
-}
-```
+- **API详细文档**：`API_DOCUMENTATION.md`
+- **字段映射说明**：`FIELD_MAPPING_IMPLEMENTATION.md`
+- **Swagger UI**：http://localhost:3000/api （服务运行时可访问）
+- **OpenAPI规范**：http://localhost:3000/api-json
 
 ---
 
-## 状态管理建议
+## 更新日志
 
-### 本地存储
-```javascript
-// 保存分析结果（防止刷新丢失）
-localStorage.setItem('currentAnalysis', JSON.stringify(analysis));
+**v1.1.0 (2026-01-29)**
+- 新增模板感知字段映射
+- 支持NJULife英文字段（author_name_en, major_en, supervisor_en）
+- 新增6个模板支持
+- `/thesis/analyze`端点使用AI驱动
 
-// 恢复分析结果
-const savedAnalysis = JSON.parse(localStorage.getItem('currentAnalysis'));
-if (savedAnalysis) {
-  // 检查是否过期
-  const expiresAt = new Date(savedAnalysis.expiresAt);
-  if (expiresAt > new Date()) {
-    setAnalysis(savedAnalysis);
-    setStep('analyzed');
-  }
-}
-```
-
-### Redux/Vuex 状态结构建议
-
-```javascript
-{
-  thesis: {
-    currentFile: File | null,
-    analysis: AnalysisResult | null,
-    selectedFields: GenerateFieldsRequest,
-    job: Job | null,
-    status: 'idle' | 'analyzing' | 'analyzed' | 'generating' | 'rendering' | 'polling' | 'completed',
-    error: string | null,
-    progress: number
-  }
-}
-```
+**v1.0.0**
+- 初始3步工作流
+- AI生成功能
+- 向后兼容旧API
 
 ---
 
-## 性能优化建议
-
-### 1. 图片预览优化
-```javascript
-// 使用分析返回的图片URL
-<img src={`${API_BASE}${image.url}`} alt={image.filename} />
-```
-
-### 2. 防抖上传
-```javascript
-const debouncedAnalyze = debounce(analyzeThesis, 500);
-```
-
-### 3. 轮询优化
-```javascript
-// 使用指数退避
-let pollInterval = 2000;
-const maxInterval = 10000;
-
-function pollWithBackoff() {
-  pollJobStatus(jobId);
-  pollInterval = Math.min(pollInterval * 1.5, maxInterval);
-  setTimeout(pollWithBackoff, pollInterval);
-}
-```
-
----
-
-## 模板ID列表
-
-```javascript
-const TEMPLATES = [
-  { id: 'njulife-2', name: '南京大学生命科学学院 v2', recommended: true },
-  { id: 'njulife', name: '南京大学生命科学学院 v1' },
-  { id: 'thu', name: '清华大学' },
-  { id: 'njuthesis', name: '南京大学官方模板' },
-  { id: 'scut', name: '华南理工大学' },
-  { id: 'hunnu', name: '湖南师范大学' }
-];
-```
-
----
-
-## 测试建议
-
-### 单元测试
-```javascript
-test('analyzeThesis should return analysis', async () => {
-  const mockFile = new File(['test'], 'test.docx');
-  const result = await analyzeThesis(mockFile, 'njulife-2');
-
-  expect(result.analysisId).toBeDefined();
-  expect(result.analysis).toBeDefined();
-  expect(result.analysis.suggestions).toBeInstanceOf(Array);
-});
-```
-
-### E2E测试
-```javascript
-test('complete workflow', async () => {
-  // 1. 上传
-  await page.setInputFiles('input[type="file"]', 'test.docx');
-
-  // 2. 等待分析完成
-  await page.waitForSelector('.suggestions');
-
-  // 3. 选择字段
-  await page.click('input[name="abstract"]');
-  await page.click('button:has-text("生成选中字段")');
-
-  // 4. 等待生成完成
-  await page.waitForSelector('button:has-text("直接渲染")');
-  await page.click('button:has-text("直接渲染")');
-
-  // 5. 等待PDF完成
-  await page.waitForSelector('a:has-text("下载PDF")');
-});
-```
-
----
-
-## 常见问题
-
-**Q: 分析需要多久？**
-A: 通常0.1秒，不使用AI，非常快
-
-**Q: 生成需要多久？**
-A: 取决于选择的字段，通常3-10秒
-
-**Q: 可以同时处理多个文档吗？**
-A: 可以，每个文档有独立的analysisId
-
-**Q: 分析结果会保存多久？**
-A: 1小时，超时需要重新分析
-
-**Q: 可以编辑提取的数据吗？**
-A: 可以，在第3步render时传入document参数
-
-**Q: 旧的API还能用吗？**
-A: 完全兼容，可以继续使用旧API
-
----
-
-## 联系支持
-
-- API文档：`API_DOCUMENTATION.md`
-- 迁移指南：`MIGRATION_GUIDE.md`
-- GitHub Issues：(your-repo-url)
-
----
-
-**准备好开始对接了吗？** 从第1步的`POST /thesis/analyze`开始吧！🚀
+**准备好开始了吗？** 从`POST /thesis/analyze`开始对接！
